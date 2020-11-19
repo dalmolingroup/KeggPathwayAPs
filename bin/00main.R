@@ -30,10 +30,7 @@ binDir<-file.path(dirBase,"bin/")
 #function dir
 funcDir<-file.path(binDir,"functions/")
 
-# Import functions files
-source(file.path(funcDir,"graphFunctions.R"))
-source(file.path(funcDir,"kgmlFunctions.R"))
-source(file.path(funcDir,"helperFunctions.R"))
+# Import dependencies file to load dependencies and functions
 source(file.path(funcDir,"dependencies.R"))
 
 loadDependencies()

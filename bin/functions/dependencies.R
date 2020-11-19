@@ -50,4 +50,10 @@ loadDependencies <- function(){
   # foreach
   if (!requireNamespace("foreach", quietly = TRUE))
     install.packages("foreach", repos = "http://cran.us.r-project.org")
+  
+  # Import functions files
+  source(file.path(funcDir,"graphFunctions.R"))
+  source(file.path(funcDir,"kgmlFunctions.R"))
+  source(file.path(funcDir,"helperFunctions.R"))
+  
 }
