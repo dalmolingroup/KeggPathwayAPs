@@ -58,7 +58,7 @@ case ${DATA_TYPE} in
         cd $org_folder
 
         # Perform the KGML file download
-        for lines in $(curl -s "http://rest.kegg.jp/list/pathway/ec"); do
+        for lines in $(curl -s "http://rest.kegg.jp/list/pathway/ec"|head -1); do
             echo "Downloading $lines"
             file=$(echo $lines | awk '{split($1,a,":"); print a[2]}')
             curl -s "http://rest.kegg.jp/get/$file/kgml" -o ./"$file.xml"
@@ -84,7 +84,7 @@ case ${DATA_TYPE} in
             cd $org_folder
 
             # Perform the KGML file download
-            for lines in $(curl -s "http://rest.kegg.jp/list/pathway/${ORG_LIST[$i]}"); do
+            for lines in $(curl -s "http://rest.kegg.jp/list/pathway/${ORG_LIST[$i]}"|head -1); do
                 echo "Downloading $lines"
                 file=$(echo $lines | awk '{split($1,a,":"); print a[2]}')
                 #echo $file 

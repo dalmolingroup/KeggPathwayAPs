@@ -55,5 +55,6 @@ loadDependencies <- function(){
   source(file.path(funcDir,"graphFunctions.R"))
   source(file.path(funcDir,"kgmlFunctions.R"))
   source(file.path(funcDir,"helperFunctions.R"))
+  source(file.path(funcDir,"phaseFunctions.R"))
   
 }

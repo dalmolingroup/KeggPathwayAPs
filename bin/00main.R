@@ -35,4 +35,7 @@ source(file.path(funcDir,"dependencies.R"))
 loadDependencies()
 
 
+downloadKGML(dirBase = dirBase)
+
+
 

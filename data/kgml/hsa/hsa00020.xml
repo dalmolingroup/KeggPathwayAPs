@@ -267,7 +267,7 @@
     </entry>
     <entry id="91" name="hsa:1737" type="gene" reaction="rn:R02569"
         link="http://www.kegg.jp/dbget-bin/www_bget?hsa:1737">
-        <graphics name="DLAT, DLTA, E2, PBC, PDC-E2, PDCE2" fgcolor="#000000" bgcolor="#BFFFBF"
+        <graphics name="DLAT, DLTA, E2, PDC-E2, PDCE2" fgcolor="#000000" bgcolor="#BFFFBF"
              type="rectangle" x="464" y="242" width="46" height="17"/>
     </entry>
     <entry id="94" name="path:hsa00280" type="map"
@@ -335,8 +335,8 @@
         <graphics name="K00174..." fgcolor="#000000" bgcolor="#FFFFFF"
              type="rectangle" x="530" y="656" width="46" height="17"/>
     </entry>
-    <entry id="117" name="ko:K00169 ko:K00170 ko:K00172 ko:K00189 ko:K00171 ko:K03737" type="ortholog" reaction="rn:R01196"
-        link="http://www.kegg.jp/dbget-bin/www_bget?K00169+K00170+K00172+K00189+K00171+K03737">
+    <entry id="117" name="ko:K00169 ko:K00170 ko:K00172 ko:K00171 ko:K03737" type="ortholog" reaction="rn:R01196"
+        link="http://www.kegg.jp/dbget-bin/www_bget?K00169+K00170+K00172+K00171+K03737">
         <graphics name="K00169..." fgcolor="#000000" bgcolor="#FFFFFF"
              type="rectangle" x="535" y="157" width="46" height="17"/>
     </entry>
