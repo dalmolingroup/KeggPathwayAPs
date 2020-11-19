@@ -1,5 +1,14 @@
 #!/bin/bash
 
+#*************************************************
+#   ATTENTION!!! This code is provided "AS-IS", 
+#   with no warranties, express or implied, and 
+#   hereby disclaims all implied warranties, 
+#   including any warranty of merchantability and 
+#   warranty of fitness for a particular purpose. 
+#   It's released under GPL v2.
+#*************************************************
+
 #==============================================================
 #**********
 #**********  IGOR BRANDAO / Clovis Reis 2020
@@ -58,7 +67,7 @@ case ${DATA_TYPE} in
         cd $org_folder
 
         # Perform the KGML file download
-        for lines in $(curl -s "http://rest.kegg.jp/list/pathway/ec"|head -1); do
+        for lines in $(curl -s "http://rest.kegg.jp/list/pathway/ec"); do
             echo "Downloading $lines"
             file=$(echo $lines | awk '{split($1,a,":"); print a[2]}')
             curl -s "http://rest.kegg.jp/get/$file/kgml" -o ./"$file.xml"
@@ -84,7 +93,7 @@ case ${DATA_TYPE} in
             cd $org_folder
 
             # Perform the KGML file download
-            for lines in $(curl -s "http://rest.kegg.jp/list/pathway/${ORG_LIST[$i]}"|head -1); do
+            for lines in $(curl -s "http://rest.kegg.jp/list/pathway/${ORG_LIST[$i]}"); do
                 echo "Downloading $lines"
                 file=$(echo $lines | awk '{split($1,a,":"); print a[2]}')
                 #echo $file 
@@ -115,7 +124,7 @@ case $ORGANISMS in
         ;;
     "all") source ${BASE_DIR}"bin/functions/lstAllOrgs"
         ;;
-    *) echo "Invalid option for organims list! Use <some> for the organims inside lstSomeOrgs file or <all> for all organims in KEGG"
+    *) echo "Invalid option for organims list! Use <some> for the organisms inside lstSomeOrgs file or <all> for all organisms in KEGG"
         exit
         ;;
 esac 
