@@ -27,6 +27,7 @@ WORKDIR=${BASE_DIR}"data/kgml/"
 DATA_TYPE=$3 # : ec for ec and ko for ko
 
 # list of organims
+# edit lstSomeOrgs for personalized organims
 ORGANISMS=$4 #"s" # s for some or a for all
 
 #set separator character
