@@ -32,7 +32,6 @@ funcDir<-file.path(binDir,"functions/")
 
 # Import dependencies file to load dependencies and functions
 source(file.path(funcDir,"dependencies.R"))
-
 loadDependencies()
 
 
