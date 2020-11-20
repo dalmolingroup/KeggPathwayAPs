@@ -1,3 +1,12 @@
+#*************************************************
+#   ATTENTION!!! This code is provided "AS-IS", 
+#   with no warranties, express or implied, and 
+#   hereby disclaims all implied warranties, 
+#   including any warranty of merchantability and 
+#   warranty of fitness for a particular purpose. 
+#   It's released under GPL v2.
+#*************************************************
+
 ##########################
 # Dependencies installer #
 ##########################
@@ -50,4 +59,11 @@ loadDependencies <- function(){
   # foreach
   if (!requireNamespace("foreach", quietly = TRUE))
     install.packages("foreach", repos = "http://cran.us.r-project.org")
+  
+  # Import functions files
+  source(file.path(funcDir,"graphFunctions.R"))
+  source(file.path(funcDir,"kgmlFunctions.R"))
+  source(file.path(funcDir,"helperFunctions.R"))
+  source(file.path(funcDir,"phaseFunctions.R"))
+  
 }

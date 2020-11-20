@@ -1,3 +1,12 @@
+#*************************************************
+#   ATTENTION!!! This code is provided "AS-IS", 
+#   with no warranties, express or implied, and 
+#   hereby disclaims all implied warranties, 
+#   including any warranty of merchantability and 
+#   warranty of fitness for a particular purpose. 
+#   It's released under GPL v2.
+#*************************************************
+
 #****************************************#
 # Functions to handle graph manipulation #
 #****************************************#
