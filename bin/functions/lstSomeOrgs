@@ -1,2 +1,2 @@
 # Put here the list of organisms to download
-declare -a ORG_LIST=( "hsa" "mmu")
+ declare -a ORG_LIST=( "hsa" "mmu" )

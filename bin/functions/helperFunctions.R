@@ -155,3 +155,11 @@ printLog <- function(message_, file_, folder_='log') {
   # Generate the log file
   write(message_, file=paste0('./', folder_, '/', format(Sys.time(), "%Y%m%d_%H%M%S_"), file_, '.txt'))
 }
+
+
+createOrgList <- function(funcDir, orgList){
+  lstSomeOrgs <- file.path(funcDir,"lstSomeOrgs")
+  cat(file = lstSomeOrgs, 
+      '# Put here the list of organisms to download\n',
+      'declare -a ORG_LIST=(', orgList,')\n')
+}

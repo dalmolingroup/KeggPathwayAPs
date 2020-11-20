@@ -199,6 +199,13 @@ generatePathwayDataFromKGML <- function(removeNoise_=TRUE) {
         pathwayData$is_bottleneck[which(pathwayData$name %in% graphBottleneck)] <- 1
       }
 
+      
+      
+      
+      
+      
+      
+# Parei aqui ----      
       # Remove the duplicated nodes
       pathwayData <- pathwayData[!duplicated(pathwayData$name),]
 
