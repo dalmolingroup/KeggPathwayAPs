@@ -35,6 +35,11 @@ loadDependencies <- function(){
   # XML
   if (!requireNamespace("XML", quietly = TRUE))
     install.packages("XML", repos = "http://cran.us.r-project.org")
+
+  # XML2
+  if (!requireNamespace("xml2", quietly = TRUE))
+    install.packages("xml2", repos = "http://cran.us.r-project.org")
+  library(xml2)
   
   # igraph
   if (!requireNamespace("igraph", quietly = TRUE))
@@ -60,10 +65,19 @@ loadDependencies <- function(){
   if (!requireNamespace("foreach", quietly = TRUE))
     install.packages("foreach", repos = "http://cran.us.r-project.org")
   
+  # SQLite
+  if (!requireNamespace("DBI", quietly = TRUE))
+    install.packages("DBI", repos = "http://cran.us.r-project.org")
+  library(DBI)
+  
+  #BiocManager::install("Rgraphviz")
+  #BiocManager::install("RBGL")
+  
   # Import functions files
   source(file.path(funcDir,"graphFunctions.R"))
   source(file.path(funcDir,"kgmlFunctions.R"))
   source(file.path(funcDir,"helperFunctions.R"))
   source(file.path(funcDir,"phaseFunctions.R"))
+  source(file.path(funcDir,"dbFunctions.R"))
   
 }

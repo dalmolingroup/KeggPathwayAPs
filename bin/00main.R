@@ -23,7 +23,7 @@ rm(list=ls(all=TRUE))
 #Did you change it to your base location?
 dirBase<-"Place here the correct name of your work folder"
 
-dirBase<-"/home/clovis/Projetos/GrupoDalmolin/Igor/gitAPs"
+dirBase<-"/home/clovis/Dropbox/projetos/Igor/gitAPs"
 
 #figures
 dirFig<-file.path(dirBase,"figures")
