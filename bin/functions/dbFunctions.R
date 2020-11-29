@@ -43,15 +43,17 @@ getNextId <- function(table){
 
 insertPathInfo<-function(pathwayinfo){
   table <- "path"
-  field <- "pName"
+  fields <- "pName"
 
   pName<- sub(pattern = "path:",replacement = '', x=pathwayinfo$name)
   pDesc<-pathwayinfo$title
   pImage<-pathwayinfo$image
   pLink <- pathwayinfo$link
   
+  values<-paste0('"',pName,'"')
+  
   #pathway exists?
-  nextId <- searchValue(table, field, pName)
+  nextId <- searchValue(table, fields, values)
   if(nextId !=0 ){ # Exists
     return(list(nextId, pName))
   }
@@ -92,96 +94,83 @@ insertEnzReac<-function(ltEnzReac){
   enzimes <- ltEnzReac[[1]]
   reactionsRef <- ltEnzReac[[2]]
   reactionsDef <- ltEnzReac[[3]]
+  compounds<- ltEnzReac[[4]]
+  pId <- ltEnzReac[[5]]
+  #reactionsRef$pId <- pId
+  
   
   reactionsRef <- do.call(rbind,
                  apply(X = reactionsRef,
                        MARGIN = 1,
                        insertReaction))
+
+  reactionsDef<-merge(reactionsDef,
+                       reactionsRef[,1:2], 
+                       by.x= "rId",
+                       by.y = "oldId")
   
+  colnames(reactionsDef)<- c("rId","cpdType","cpdId",
+                              "cpdName","pId","rNewId")
+  reactionsDef<-merge(reactionsDef,
+                       compounds[,1:2], 
+                       by.x= "cpdId",
+                       by.y = "oldId")
+  colnames(reactionsDef)<- c("cpdId","rId","cpdType",
+                              "cpdName","pId","rNewId",
+                              "cNewId")
+  reactionsDef<-do.call(rbind,
+                         apply(X = reactionsDef,
+                               MARGIN = 1,
+                               insertSubsProd))
   
-  table <- "enzime"
-  field <- "eName"
-  eName <- enzime["eName"]
-  pId <- enzime["pId"]
-  x <- enzime["x"]
-  y <- enzime["y"]
-  eLabel<-''
+  enzimes <- merge(enzimes, 
+                    reactionsRef[!duplicated(reactionsRef$newId),
+                                  c("newId","rName")],
+                    by.x="eReaction",
+                    by.y = "rName")
+  colnames(enzimes)<-c("eReaction","eId","eName","eType",
+              "x","y","pId","rId")
+  enzimes$eReaction<-NULL
+  enzimes$rId <- substring(enzimes$rId,2)
   
-  #enzime exists?
-  nextId <- searchValue(table, field, eName)
-  if(nextId !=0 ){ # Exists
-    # enzime in pathway exists
-    exist<-searchValue("enzOnPath","eId",nextId, pId)
-    if( exist == 0){
-      sql <- paste0('INSERT INTO enzOnPath
-                    VALUES (',
-                    nextId,',',
-                    pId,',',
-                    x,',',
-                    y,');')
-      resQuery <- dbExecute(dbCon,sql) 
-    }
-    return(list(nextId, eName))
-  }
-  # Inexists
-  #take the next ID from database
-  nextId<-getNextId(table)
+  enzimes <- do.call(rbind,
+                      apply(X = enzimes,
+                            MARGIN = 1,
+                            insertEnzime))
   
-  #new enzimeID
-  sql<- paste0('INSERT INTO ', 
-               table,
-               ' VALUES (',
-               nextId,',"',
-               eName,'","',
-               eLabel,'");')
-  resQuery <- dbExecute(dbCon,sql)
-  sql <- paste0('INSERT INTO enzOnPath
-                    VALUES (',
-                nextId,',',
-                pId,',',
-                x,',',
-                y,');')
+  return(list(enzimes,reactionsRef,reactionsDef))
   
-  #new pathway
-  e<-tryCatch(resQuery <- dbExecute(dbCon,sql),
-              error = function(e) {
-                erro<-grep(pattern = "UNIQUE constraint failed",
-                           x= e$message ) 
-                if(length(erro)>0){
-                  warning(paste("Enzime",eName, "already exixts."))
-                }else{
-                  warning(paste("Could not process",eName, "information."))
-                }
-                return(0)
-              })
-  if(e == 0){
-    return(list(NA,eName))
-  }else{
-    return(list(nextId,eName ))
-  }
 }
 
-#add new Id for enzimes
-enzimes<-merge(enzimes,do.call(rbind, eId),by=2)
-enzimes$newId<-paste0('e',enzimes$V1)
-enzimes$V1<-NULL
+# #add new Id for enzimes
+# enzimes<-merge(enzimes,do.call(rbind, eId),by=2)
+# enzimes$newId<-paste0('e',enzimes$V1)
+# enzimes$V1<-NULL
 
-
+#enzime<-enzimes[3,] #debug
 insertEnzime<-function(enzime){
   table <- "enzime"
-  field <- "eName"
+  fields <- "eName"
+  
+  oldId<-enzime["eId"]
   eName <- enzime["eName"]
-  pId <- enzime["pId"]
+  rId <- enzime["rId"]
   x <- enzime["x"]
   y <- enzime["y"]
+  pId <- enzime["pId"]
   eLabel<-''
-  oldId<-enzime["eId"]
 
+  values<-paste0('"',eName,'"')
+  
   #enzime exists?
-  nextId <- searchValue(table, field, eName)
+  nextId <- searchValue(table, fields, values)
   if(nextId !=0 ){ # Exists
     # enzime in pathway exists
-    exist<-searchValue("enzOnPath","eId",nextId, pId)
+    fields<-c("eId","pId")
+    values<-c(paste0('"',nextId,'"'),
+              paste0('"',pId,'"'))
+    
+    exist<-searchValue("enzOnPath",fields, values)
     if( exist == 0){
       sql <- paste0('INSERT INTO enzOnPath
                     VALUES (',
@@ -190,8 +179,29 @@ insertEnzime<-function(enzime){
                     x,',',
                     y,');')
       resQuery <- dbExecute(dbCon,sql) 
+      
+      fields<-c("eId","rId")
+      values<-c(paste0('"',nextId,'"'),
+                paste0('"',rId,'"'))
+      
+      exist<-searchValue("enzReac",fields, values)
+      if( exist == 0){
+        sql<- paste0('INSERT INTO enzReac
+                      VALUES (',
+                     nextId,',',
+                     rId,');')
+        resQuery <- dbExecute(dbCon,sql) 
+      }
     }
-    return(list(nextId, eName))
+    return(data.frame(newId=paste0('e',nextId)
+                      ,oldId= oldId,
+                      eName = eName, 
+                      x = x,
+                      y = y,
+                      pId = pId,
+                      eLabel = eLabel, 
+                      rId = paste0('r',rId),
+                      stringsAsFactors = F))
   }
   # Inexists
   #take the next ID from database
@@ -205,52 +215,64 @@ insertEnzime<-function(enzime){
                  eName,'","',
                  eLabel,'");')
     resQuery <- dbExecute(dbCon,sql)
-      sql <- paste0('INSERT INTO enzOnPath
+    sql <- paste0('INSERT INTO enzOnPath
                     VALUES (',
-                    nextId,',',
-                    pId,',',
-                    x,',',
-                    y,');')
+                  nextId,',',
+                  pId,',',
+                  x,',',
+                  y,');')
+    resQuery <- dbExecute(dbCon,sql)
 
-  #new pathway
-  e<-tryCatch(resQuery <- dbExecute(dbCon,sql),
-              error = function(e) {
-                erro<-grep(pattern = "UNIQUE constraint failed",
-                           x= e$message ) 
-                if(length(erro)>0){
-                  warning(paste("Enzime",eName, "already exixts."))
-                }else{
-                  warning(paste("Could not process",eName, "information."))
-                }
-                return(0)
-              })
-  if(e == 0){
-    return(list(NA,eName))
-  }else{
-    return(list(nextId,eName ))
-  }
+    sql<- paste0('INSERT INTO enzReac
+                      VALUES (',
+                 nextId,',',
+                 rId,');')
+    resQuery <- dbExecute(dbCon,sql)
+    
+    return(data.frame(newId=paste0('e',nextId)
+                      ,oldId= oldId,
+                      eName = eName, 
+                      x = x,
+                      y = y,
+                      pId = pId,
+                      eLabel = eLabel, 
+                      rId = paste0('r',rId),
+                      stringsAsFactors = F))
+    
 }
 
-reaction<-as.vector(reactionsRef[1,]) #debug
+#reaction<-as.vector(reactionsRef[59,]) #debug
 insertReaction<-function(reaction){
   table <- "reaction"
-  field <- "rName"
+  fields <- c("rName","rReversible")
   rName <- reaction["rName"]
   rType <- reaction["rType"]
   rType <- ifelse(rType == 'reversible', 1,0)
   oldId<-reaction["rId"]
+  pId <- reaction["pId"]
+  
+  values<-c(paste0('"',rName,'"'),
+            paste0('"',rType,'"'))
   
   #reaction exists?
-  nextId <- searchValue(table, field, rName)
+  nextId <- searchValue(table, fields, values)
   if(nextId !=0 ){ # Exists
     # reaction exists on pathway
-    exist<-searchValue("enzOnPath","eId",nextId, pId)
+    
+    fields<-c("rId","pId")
+    values<-c(paste0('"',nextId,'"'),
+              paste0('"',pId,'"'))
+    
+    
+    exist<-searchValue("reacOnPath",fields, values)
     if( exist == 0){
       sql <- paste0('INSERT INTO reacOnPath
                     VALUES (',
                     nextId,',',
                     pId,');')
       resQuery <- dbExecute(dbCon,sql) 
+    }else{
+      cat("existe",rName," ",pId, " \n")
     }
     return(data.frame(newId=paste0('r',nextId)
                       ,oldId= oldId,
@@ -305,41 +327,41 @@ insertReaction<-function(reaction){
   
     
   
-  #reversible must be 0 or 1
-  if(!rReversible %in% c(0,1)){
-    warning(paste("Reaction must be 0 for irreversible or 1 to reversible.
-                  Not processing", rName))
-    return(0)
-  }
-  
-  table <- "reaction"
-  nextId<-getNextId(table)
-  
-  #new pathway
-  sql<- paste0('INSERT INTO ', 
-               table,
-               ' VALUES (',
-               nextId,',"',
-               rName,'","',
-               rReversible,'");')
-  e<-tryCatch(resQuery <- dbExecute(dbCon,sql),
-              error = function(e) {
-                erro<-grep(pattern = "UNIQUE constraint failed",
-                           x= e$message ) 
-                if(length(erro)>0){
-                  warning(paste("Reaction",rName, "already exixts."))
-                }else{
-                  warning(paste("Could not process",rName, "information."))
-                }
-                return()
-              })
-  return(nextId)
+  # #reversible must be 0 or 1
+  # if(!rReversible %in% c(0,1)){
+  #   warning(paste("Reaction must be 0 for irreversible or 1 to reversible.
+  #                 Not processing", rName))
+  #   return(0)
+  # }
+  # 
+  # table <- "reaction"
+  # nextId<-getNextId(table)
+  # 
+  # #new pathway
+  # sql<- paste0('INSERT INTO ', 
+  #              table,
+  #              ' VALUES (',
+  #              nextId,',"',
+  #              rName,'","',
+  #              rReversible,'");')
+  # e<-tryCatch(resQuery <- dbExecute(dbCon,sql),
+  #             error = function(e) {
+  #               erro<-grep(pattern = "UNIQUE constraint failed",
+  #                          x= e$message ) 
+  #               if(length(erro)>0){
+  #                 warning(paste("Reaction",rName, "already exixts."))
+  #               }else{
+  #                 warning(paste("Could not process",rName, "information."))
+  #               }
+  #               return()
+  #             })
+  # return(nextId)
 }
 
-compound<-as.vector(compounds[1,]) #debug
+#compound<-as.vector(compounds[1,]) #debug
 insertCompound<-function(compound){
   table <- "compound"
-  field <- "cName"
+  fields <- "cName"
   
   cName <- compound["eName"]
   cDesc <- compound["cDesc"]
@@ -348,11 +370,17 @@ insertCompound<-function(compound){
   y <- compound["y"]
   oldId<-compound["eId"]
   
+  values<-paste0('"',cName,'"')
+  
   #compound exists?
-  nextId <- searchValue(table, field, cName)
+  nextId <- searchValue(table, fields, values)
   if(nextId !=0 ){ # Exists
     # enzime in pathway exists
-    exist<-searchValue("compOnPath","cId",nextId, pId)
+    fields<-c("cId","pId")
+    values<-c(paste0('"',nextId,'"'),
+              paste0('"',pId,'"'))
+    
+    exist<-searchValue("compOnPath",fields, values)
     if( exist == 0){
       sql <- paste0('INSERT INTO compOnPath
                     VALUES (',
@@ -421,6 +449,55 @@ insertCompound<-function(compound){
   }
 }
 
+#rDef<-as.vector(reactionsDef2[1,]) #debug
+insertSubsProd<-function(rDef){
+  table <- "subsProd"
+  fields <- c("rId","cId","spType")
+  
+  oldcId <- rDef["cpdId"]
+  oldrId <- rDef["rId"]
+  cType <- substr(rDef["cpdType"],1,1) 
+  cName <- rDef["cpdName"]
+  rNewId <- rDef["rNewId"]
+  cNewId <- rDef["cNewId"]
+  
+  values<-c(paste0('"',substring(rNewId,2),'"'),
+            paste0('"',substring(cNewId,2),'"'),
+            paste0('"',cType,'"'))
+  
+  #compound exists?
+  nextId <- searchValue(table, fields, values)
+  if(nextId == 0 ){
+    # Inexists
+
+    #new compoundID
+    sql<- paste0('INSERT INTO ', 
+                 table,
+                 ' VALUES ("',
+                 substring(rNewId,2),'","',
+                 substring(cNewId,2),'","',
+                 cType,'");')
+  resQuery <- dbExecute(dbCon,sql)
+  
+  return(data.frame(oldcId = oldcId,
+                    oldrId = oldrId,
+                    cType = cType, 
+                    cName = cName,
+                    rNewId = rNewId,
+                    cNewId = cNewId,
+                    stringsAsFactors = F))
+  }else{
+    return(data.frame(oldcId = oldcId,
+                      oldrId = oldrId,
+                      cType = cType, 
+                      cName = cName,
+                      rNewId = rNewId,
+                      cNewId = cNewId,
+                      stringsAsFactors = F))
+  }
+}
+
+
 ecNodes2Db <- function(nodes, map){
   node2ec <- list()
   i=2 #debug
@@ -462,27 +539,50 @@ ecNodes2Db <- function(nodes, map){
   }
 }
 
-searchValue <- function(table, field, value, pId = NA){
-  if(is.na(pId)){
-    sql<-paste0('SELECT * 
+
+searchValue <- function(table, fields, values){
+  if(length(fields) != length(values)){
+    stop("Fields and values must have same length.")
+  }
+  sql<-paste0('SELECT * 
                 FROM ',table,
-                ' WHERE ',field,' = "',value,  '"')
-    resQuery <- dbGetQuery(dbCon,sql)
-    if(nrow(resQuery)==0){
-      return(0)
-    }else{
-      return(resQuery[[1]][[1]])
-    }
-  }else{
-    sql<-paste0('SELECT * 
-                FROM ',table,
-                ' WHERE ',field,' = ',value,  ' and ',
-                        ' pId = ', pId,';')
-    resQuery <- dbGetQuery(dbCon,sql)
-    if(nrow(resQuery)==0){
-      return(0)
-    }else{
-      return(resQuery[[1]][[1]])
+              ' WHERE ')
+  for(idx in 1:length(fields)){
+    sql<- paste0(sql,fields[idx],' = ',values[idx])
+    if(idx != length(fields)){
+      sql<- paste0(sql,' and ')
     }
   }
+  sql
+    resQuery <- dbGetQuery(dbCon,sql)
+    if(nrow(resQuery)==0){
+      return(0)
+    }else{
+      return(resQuery[[1]][[1]])
+    }
 }
+
+# searchValue <- function(table, field, value, pId = NA){
+#   if(is.na(pId)){
+#     sql<-paste0('SELECT * 
+#                 FROM ',table,
+#                 ' WHERE ',field,' = "',value,  '"')
+#     resQuery <- dbGetQuery(dbCon,sql)
+#     if(nrow(resQuery)==0){
+#       return(0)
+#     }else{
+#       return(resQuery[[1]][[1]])
+#     }
+#   }else{
+#     sql<-paste0('SELECT * 
+#                 FROM ',table,
+#                 ' WHERE ',field,' = ',value,  ' and ',
+#                         ' pId = ', pId,';')
+#     resQuery <- dbGetQuery(dbCon,sql)
+#     if(nrow(resQuery)==0){
+#       return(0)
+#     }else{
+#       return(resQuery[[1]][[1]])
+#     }
+#   }
+# }

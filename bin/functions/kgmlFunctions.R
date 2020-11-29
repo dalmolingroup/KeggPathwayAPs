@@ -544,38 +544,45 @@ KGML2Dataframe <- function(kgml_,
     reactionsRef$pId<-pId
     reactionsDef$pId<-pId
     
-    cId <- do.call(rbind, 
+    compoundsNId <- do.call(rbind, 
                    apply(X = compounds,
                          MARGIN = 1,
                          insertCompound))
-    #add new id to compounds
-    compounds<-merge(compounds,do.call(rbind, cId),by=2)
+
+    ltEnzReac<-list(enzimes,reactionsRef, 
+                    reactionsDef, compoundsNId,
+                    pId) #debug
+    ltEnzReac <- insertEnzReac(list(enzimes,reactionsRef, 
+                       reactionsDef, compoundsNId, 
+                       pId))
     
-    ltEnzReac<-list(enzimes,reactionsRef, reactionsDef) #debug
-    insertEnzReac(list(enzimes,reactionsRef, reactionsDef, pId))
+    
+    enzimes2<-ltEnzReac[[1]]
+    reactionsRef2 <- ltEnzReac[[2]]
+    reactionsDef2 <- ltEnzReac[[3]]
     #atualizar a função de inserçaõ de reação em insertEnzReac
     #insert compound information
     
     
-    ecNodes2Db(nodes, map)
+    #ecNodes2Db(nodes, map)
     }
 
 
   # Create a list with pathway dataFrames info
-  current_kgml <- list(pathwayinfo = pathwayinfo, 
-                       entryRef = entryRef, 
-                       entryMap = entryMap,
-                       dupEntry = dupEntry,
-                       eDupReaction = eDupReaction,
-                       edges = edges,
-                       reactionsRef = reactionsRef,
-                       reactionsDef = reactionsDef,
-                       rDupReaction = rDupReaction,
-                       nodes = nodes,
-                       nodesDuplic = nodesDuplic)
-
-  # Return the list with pathway dataFrames info
-  return(current_kgml)
+  # current_kgml <- list(pathwayinfo = pathwayinfo, 
+  #                      entryRef = entryRef, 
+  #                      entryMap = entryMap,
+  #                      dupEntry = dupEntry,
+  #                      eDupReaction = eDupReaction,
+  #                      edges = edges,
+  #                      reactionsRef = reactionsRef,
+  #                      reactionsDef = reactionsDef,
+  #                      rDupReaction = rDupReaction,
+  #                      nodes = nodes,
+  #                      nodesDuplic = nodesDuplic)
+  # 
+  # # Return the list with pathway dataFrames info
+  # return(current_kgml)
 #  }
 }
 
