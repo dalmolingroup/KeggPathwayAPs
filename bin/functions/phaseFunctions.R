@@ -72,7 +72,15 @@ generateDataFromKGML <- function(dirBase,
     return(0)
   }
   
+  logFile <<- file.path(dirBase,"log","phase2.log")
+
   cat("Starting", dataType,  "pathways processing... \n\n")
+  cat(file = logFile, append = T,
+      "\n\n ***************************************************\n",
+      "Starting", dataType,  "pathways processing...\n",
+      date(),"\n",
+      "***************************************************\n\n")
+  
   
   workDir<-file.path(dirBase,"data","kgml")
   filterDir<-file.path(dirBase,"data","filtredKgml",dataType)
@@ -90,7 +98,7 @@ generateDataFromKGML <- function(dirBase,
       dir.create(dbDir)
     }
     #conect and test dictionary
-    dbCon <- dbConnect(RSQLite::SQLite(), dbFile)
+    dbCon <<- dbConnect(RSQLite::SQLite(), dbFile)
     #check if is an empty db. If it is, copy from template
       if(length(dbListTables(dbCon)) == 0){
       dbDisconnect(dbCon)
@@ -99,7 +107,7 @@ generateDataFromKGML <- function(dirBase,
       }else{
         stop("Database template is missing. Please download it from github...")
       }
-      dbCon <- dbConnect(RSQLite::SQLite(), dbFile)
+      dbCon <<- dbConnect(RSQLite::SQLite(), dbFile)
     }
   }else{
     #list all folders
@@ -113,12 +121,12 @@ generateDataFromKGML <- function(dirBase,
     # Get the list of files
     #folder = file.path("./output/kgml/", reference_pathway, "/")
     kgml_list <- list.files(path=folder, pattern='*.xml')
-    
+    # xmllist ----
     #*********************************************************************************#
     # IMPORTANTE: Aqui estou reduzindo a lista das pathways para não ficar tão pesado!
     #*********************************************************************************#
-    kgml_list = c('ec00010.xml', 'ec00520.xml')
-    #kgml_list = c('ec00010.xml')
+    #kgml_list = c('ec00010.xml', 'ec00520.xml') #debug
+    #kgml_list = c('ec00121.xml') #debug
     
     kgml_index <- 1
     
@@ -132,8 +140,16 @@ generateDataFromKGML <- function(dirBase,
       return(FALSE)
     }
     file = kgml_list[1] #debug
+    processed <<- 0
     # Loop 01: Run through all available pathways kgml
     lapply(kgml_list, function(file) {
+      processed <<- processed + 1
+      cat("Processing",
+          file,
+          '[',processed,'/',
+          available_pathways,']\n')
+      cat(file = logFile, append = T,
+          "Processing", file,'...\n')
       
       kgml_<-file.path(folder, file) #debug
       # Load the dataframe ----
@@ -288,6 +304,7 @@ generateDataFromKGML <- function(dirBase,
   #   })
   #   #}
   # }
-    dbDisconnect(dbCon)
+    
   }
+  dbDisconnect(dbCon)
 }

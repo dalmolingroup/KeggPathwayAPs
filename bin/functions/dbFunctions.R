@@ -271,8 +271,8 @@ insertReaction<-function(reaction){
                     nextId,',',
                     pId,');')
       resQuery <- dbExecute(dbCon,sql) 
-    }else{
-      cat("existe",rName," ",pId, " \n")
+    # }else{ #debug
+    #   cat("existe",rName," ",pId, " \n") #debug
     }
     return(data.frame(newId=paste0('r',nextId)
                       ,oldId= oldId,
@@ -447,6 +447,60 @@ insertCompound<-function(compound){
                       stringsAsFactors = F))
                
   }
+}
+
+
+#relation<-as.vector(relationRef2[1,]) #debug
+insertRelation<-function(relation){
+  table <- "interaction"
+  fields <- c("eId1","eId2","cId")
+  
+  eNewId1 <- relation["eNewId1"]
+  eNewId2 <- relation["eNewId2"]
+  cNewId <- relation["cNewId"]
+  eOldId1 <- relation["eOldId1"]
+  eOldId2 <- relation["eOldId2"]
+  cOldId <- relation["cOldId"]
+  
+  values<-c(paste0('"',eNewId1,'"'),
+            paste0('"',eNewId2,'"'),
+            paste0('"',cNewId,'"'))
+  
+  #compound exists?
+  nextId <- searchValue(table, fields, values)
+  if(nextId !=0 ){ # Exists
+    return(data.frame(eNewId1 = eNewId1,
+                      eNewId2= eNewId2,
+                      cNewId = cNewId, 
+                      eOldId1 = eOldId1,
+                      eOldId2 = eOldId2,
+                      cOldId = cOldId,
+                      stringsAsFactors = F))
+  }
+  # Inexists
+  #new relation
+  sql<- paste0('INSERT INTO ', 
+               table,
+               ' VALUES (',
+               substring(eNewId1,2),',',
+               substring(eNewId2,2),',',
+               substring(cNewId,2),');')
+  resQuery <- dbExecute(dbCon,sql)
+ 
+  eNewId1 <- relation["eNewId1"]
+  eNewId2 <- relation["eNewId2"]
+  cNewId <- relation["cNewId"]
+  eOldId1 <- relation["eOldId1"]
+  eOldId2 <- relation["eOldId2"]
+  cOldId <- relation["cOldId"] 
+  
+  return(data.frame(eNewId1 = eNewId1,
+                    eNewId2= eNewId2,
+                    cNewId = cNewId, 
+                    eOldId1 = eOldId1,
+                    eOldId2 = eOldId2,
+                    cOldId = cOldId,
+                    stringsAsFactors = F))
 }
 
 #rDef<-as.vector(reactionsDef2[1,]) #debug

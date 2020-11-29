@@ -419,6 +419,8 @@ KGML2Dataframe <- function(kgml_,
     #          cat(msg)
     #          stop(e)
     #        })
+  
+  error <<- 0
   tryCatch(doc <- read_xml(kgml_, getDTD = FALSE, error = xmlErrorCumulator(immediate = FALSE)),
            error = function(e) {
              fileSize <- file.info(kgml_)$size[1]
@@ -482,7 +484,19 @@ KGML2Dataframe <- function(kgml_,
   entry<-xml_find_first(root,"//entry[@name='ec:2.7.1.1']") #debug
   #entry<-isEntry[[1]] #debug
   # Retrieve the pathway entries as dataFrame
-  dataList <- lapply(isEntry, parseEntry)
+  tryCatch(dataList <- lapply(isEntry, parseEntry),
+           error = function(e) {
+             cat("\tError processing", basename(kgml_), "file.\n")
+             cat(file = logFile, append = T,
+                 "\tError processing", basename(kgml_), "file.\n")
+             error<<-1
+             return(NULL)
+           })
+  if(error != 0){
+    return(0)
+  }
+             
+           
   #rearange in dataframes
   entryRef <- do.call(rbind, lapply(dataList, `[[`, 1))
   entryMap <- do.call(rbind, lapply(dataList, `[[`, 2))
@@ -494,12 +508,36 @@ KGML2Dataframe <- function(kgml_,
 
   relation<-xml_find_first(root,"//relation") #debug
   # Retrieve the pathway edges as dataFrame
-  dataList <- lapply(isRelation, parseRelation)
+  tryCatch(dataList <- lapply(isRelation, parseRelation),
+                error = function(e) {
+                  cat("\tError processing", basename(kgml_), "file.\n")
+                  cat(file = logFile, append = T,
+                      "\tError processing", basename(kgml_), "file.\n")
+                  error<<-1
+                  return(NULL)
+                })
+  if(error != 0){
+    return(0)
+  }
+  
   relationRef <- do.call(rbind, dataList)
   rm(dataList)
 
   # Retrieve the pathway reactions as dataFrame
-  dataList <- lapply(isReaction, parseReaction)
+  
+  tryCatch(dataList <- lapply(isReaction, parseReaction),
+                error = function(e) {
+                  cat("\tError processing", basename(kgml_), "file.\n")
+                  cat(file = logFile, append = T,
+                      "\tError processing", basename(kgml_), "file.\n")
+                  error<<-0
+                  error<<-1
+                  return(NULL)
+                })
+  if(error != 0){
+    return(0)
+  }
+  
   # reactions <- do.call(rbind, dataList)
   reactionsRef <- do.call(rbind, lapply(dataList, `[[`, 1))
   reactionsDef <- do.call(rbind, lapply(dataList, `[[`, 2))
@@ -534,6 +572,22 @@ KGML2Dataframe <- function(kgml_,
   i=2 #debug
   # dbDisconnect(dbCon) #debug
   # dbCon <- dbConnect(RSQLite::SQLite(), dbFile)#debug
+  
+  #something is wrong with data?
+  if(isTRUE(is.null(nrow(compounds))) | 
+     isTRUE(nrow(compounds) == 0) |
+     isTRUE(is.null(nrow(reactionsRef))) | 
+     isTRUE(nrow(reactionsRef) == 0)|
+     isTRUE(is.null(nrow(enzimes))) | 
+     isTRUE(nrow(enzimes) == 0) |
+     isTRUE(is.null(nrow(relationRef))) | 
+     isTRUE(nrow(relationRef) == 0)){
+    cat("\tError processing", basename(kgml_), "file.\n")
+    cat(file = logFile, append = T,
+        "\tError processing", basename(kgml_), "file.\n")
+    return(0)
+  }
+    
     
   if(dataType == 'ec'){
     #Insert pathway information into database
@@ -556,10 +610,42 @@ KGML2Dataframe <- function(kgml_,
                        reactionsDef, compoundsNId, 
                        pId))
     
-    
     enzimes2<-ltEnzReac[[1]]
     reactionsRef2 <- ltEnzReac[[2]]
     reactionsDef2 <- ltEnzReac[[3]]
+    
+    #remove all maplinks
+    relationRef2 <- relationRef[relationRef$type == "ECrel",]
+    #get entry1 newId
+    relationRef2<- merge(relationRef2,
+                         enzimes2[,c("newId","oldId")],
+                         by.x = "entry1",
+                         by.y = "oldId",
+                         all.x = T)
+    colnames(relationRef2)[c(1,6)] <- c("eOldId1","eNewId1")
+    #get entry2 newId
+    relationRef2<- merge(relationRef2,
+                         enzimes2[,c("newId","oldId")],
+                         by.x = "entry2",
+                         by.y = "oldId",
+                         all.x = T)
+    colnames(relationRef2)[c(1,7)] <- c("eOldId2","eNewId2")
+    #get compound newId
+    relationRef2 <- merge(relationRef2,
+                          compoundsNId[,c("newId","oldId")],
+                          by.x = "value",
+                          by.y = "oldId",
+                          all.x = T)
+    colnames(relationRef2)[c(1,8)] <-c("cOldId","cNewId")
+    
+    relationRef2 <- na.exclude(relationRef2)
+    
+    relationRef3 <- do.call(rbind, 
+                            apply(X = relationRef2,
+                                  MARGIN = 1,
+                                  insertRelation))
+    
+    
     #atualizar a função de inserçaõ de reação em insertEnzReac
     #insert compound information
     
