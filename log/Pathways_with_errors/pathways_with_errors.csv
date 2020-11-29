@@ -1,0 +1,32 @@
+org,pathway,pathway_name,reason,pathway_link
+ec,ec00121,Secondary bile acid biosynthesis,"A rota não apresenta nenuhuma tag “relation” e nem “reaction” no arquivo .xml, ou seja não há conectividade entre os nós",https://www.kegg.jp/kegg-bin/show_pathway?org_name=ec&mapno=00121&mapscale=&show_description=show
+ec,ec00190,Oxidative phosphorylation,"A rota é uma figura estática que tem somente 1 nó se conectando a outros 4, possui enzimas e compostos",https://www.kegg.jp/kegg-bin/show_pathway?org_name=ec&mapno=00190&mapscale=&show_description=show
+ec,ec00195,Photosynthesis,"A rota não apresenta nenuhuma tag “relation” e nem “reaction” no arquivo .xml, ou seja não há conectividade entre os nós",https://www.kegg.jp/kegg-bin/show_pathway?org_name=ec&mapno=00195&mapscale=&show_description=show
+ec,ec00231,Puromycin biosynthesis,"A rota não apresenta nenuhuma tag “relation” e apenas 1 tag “reaction” no arquivo .xml, ou seja não há conectividade entre os nós",Não carrega no site do KEGG
+ec,ec00510,N-Glycan biosynthesis,"Esta rota possui todas as tag entry, relation, reaction, compound, contudo a rede é formada por 8 componentes desconectados, o erro pode vir do fato de nem todas as entries possuirem conectividade",https://www.kegg.jp/kegg-bin/show_pathway?org_name=ec&mapno=00510&mapscale=&show_description=show
+ec,ec00511,,,
+ec,ec00512,,,
+ec,ec00513,,,
+ec,ec00514,,,
+ec,ec00515,,,
+ec,ec00522,,,
+ec,ec00531,,,
+ec,ec00532,,,
+ec,ec00533,,,
+ec,ec00534,,,
+ec,ec00540,,,
+ec,ec00563,,,
+ec,ec00571,,,
+ec,ec00572,,,
+ec,ec00601,,,
+ec,ec00603,,,
+ec,ec00604,,,
+ec,ec00680,,,
+ec,ec00966,,,
+ec,ec01040,,,
+ec,ec01051,,,
+ec,ec01056,,,
+ec,ec01100,,,
+ec,ec01110,,,
+ec,ec01120,,,
+ec,ec01130,,,
