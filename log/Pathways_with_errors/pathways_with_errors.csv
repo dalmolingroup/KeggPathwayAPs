@@ -4,17 +4,17 @@ ec,ec00190,Oxidative phosphorylation,"A rota é uma figura estática que tem som
 ec,ec00195,Photosynthesis,"A rota não apresenta nenuhuma tag “relation” e nem “reaction” no arquivo .xml, ou seja não há conectividade entre os nós",https://www.kegg.jp/kegg-bin/show_pathway?org_name=ec&mapno=00195&mapscale=&show_description=show
 ec,ec00231,Puromycin biosynthesis,"A rota não apresenta nenuhuma tag “relation” e apenas 1 tag “reaction” no arquivo .xml, ou seja não há conectividade entre os nós",Não carrega no site do KEGG
 ec,ec00510,N-Glycan biosynthesis,"Esta rota possui todas as tag entry, relation, reaction, compound, contudo a rede é formada por 8 componentes desconectados, o erro pode vir do fato de nem todas as entries possuirem conectividade",https://www.kegg.jp/kegg-bin/show_pathway?org_name=ec&mapno=00510&mapscale=&show_description=show
-ec,ec00511,,,
-ec,ec00512,,,
-ec,ec00513,,,
-ec,ec00514,,,
-ec,ec00515,,,
-ec,ec00522,,,
-ec,ec00531,,,
-ec,ec00532,,,
-ec,ec00533,,,
-ec,ec00534,,,
-ec,ec00540,,,
+ec,ec00511,Other glycan degradation,"A rota apresenta somente as tags enzyme e map e nenhuma relation, compound or reaction, ou seja não há conectividade entre os nós",https://www.kegg.jp/kegg-bin/show_pathway?org_name=ec&mapno=00511&mapscale=&show_description=show
+ec,ec00512,Mucin type O-glycan biosynthesis,"Apesar de ser uma rede pequena (9 enzimas), elas estão conectados em um único componente conectado. As demais seções do diagrama do KEGG que não formam uma rede foram desconsideradas no meu processamento",https://www.kegg.jp/kegg-bin/show_pathway?org_name=ec&mapno=00512&mapscale=&show_description=show
+ec,ec00513,Various types of N-glycan biosynthesis,"A rede possui todas as tags, contudo é formada por N componentes desconectados, sendo que muitos nós estão totalmente isolados",https://www.kegg.jp/kegg-bin/show_pathway?org_name=ec&mapno=00513&mapscale=&show_description=show
+ec,ec00514,Other types of O-glycan biosynthesis,"Só tem a tag de enzimas, nem forma uma rede",https://www.kegg.jp/kegg-bin/show_pathway?org_name=ec&mapno=00514&mapscale=&show_description=show
+ec,ec00515,Mannose type O-glycan biosynthesis,"Tem todas as tags, mas apenas 4 das 11 enzimas possuem conectividade. As demais estão soltas pelo plot da rede",https://www.kegg.jp/kegg-bin/show_pathway?org_name=ec&mapno=00515&mapscale=&show_description=show
+ec,ec00522,"Biosynthesis of 12-, 14- and 16-membered macrolides","A rede possui todas as tags, contudo é formada por N componentes desconectados, sendo que muitos nós estão totalmente isolados",https://www.kegg.jp/kegg-bin/show_pathway?org_name=ec&mapno=00522&mapscale=&show_description=show
+ec,ec00531,Glycosaminoglycan degradation,"Tem todas as tags, porém a rede apresenta 4 componentes desconectados entre si",https://www.kegg.jp/kegg-bin/show_pathway?org_name=ec&mapno=00531&mapscale=&show_description=show
+ec,ec00532,Glycosaminoglycan biosynthesis - chondroitin sulfate / dermatan sulfate,"O kgml apresenta todas as tags, porém a rede possui 10 componentes desconectados",https://www.kegg.jp/kegg-bin/show_pathway?org_name=ec&mapno=00532&mapscale=&show_description=show
+ec,ec00533,Glycosaminoglycan biosynthesis - keratan sulfate,"A rota não apresenta nenuhuma tag “relation” e nem “reaction” no arquivo .xml, ou seja não há conectividade entre os nós",https://www.kegg.jp/kegg-bin/show_pathway?org_name=ec&mapno=00533&mapscale=&show_description=show
+ec,ec00534,Glycosaminoglycan biosynthesis - heparan sulfate / heparin,"A rede tem entry e reaction, mas curiosamente nenhuma tag relation",https://www.kegg.jp/kegg-bin/show_pathway?org_name=ec&mapno=00534&mapscale=&show_description=show
+ec,ec00540,Lipopolysaccharide biosynthesis,"Esta rota possui todas as tag entry, relation, reaction, compound, contudo a rede é formada por componentes desconectados, o erro pode vir do fato de nem todas as entries possuirem conectividade",https://www.kegg.jp/kegg-bin/show_pathway?org_name=ec&mapno=00540&mapscale=&show_description=show
 ec,ec00563,,,
 ec,ec00571,,,
 ec,ec00572,,,
