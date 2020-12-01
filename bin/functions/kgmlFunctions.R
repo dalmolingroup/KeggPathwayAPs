@@ -18,7 +18,7 @@
 #' This is the set of functions to handle the KEGG kgml files
 #'
 #' @author
-#' Igor Brandão
+#' Igor Brandão & Clovis F Reis
 
 # Import the necessary libraries
 library("XML")
@@ -42,7 +42,7 @@ parsePathwayInfo <- function(root)
                             link = NA, stringsAsFactors = FALSE)
 
   # Access the entry attributes
-  attrs <- xmlAttrs(root)
+  attrs <- xml_attrs(root)
 
   # Retrieve the 1-dimensional attributes
   name <- attrs[["name"]]
@@ -98,9 +98,9 @@ parseEntry <- function(entry)
   #                           width = NA, height = NA, fgcolor = NA, bgcolor = NA, stringsAsFactors = FALSE)
 
 
-  # newEntryRef strucutre : eId, eName, eType, eReaction, multiReact
+  # newEntryRef strucutre : eId, eName, eType, eReaction, multiReact, x, y coordinates
   # newEntryMap strucutre : eId, mLink, mName, fgcolor, bgcolor,
-  #                         type, x, y, width, height
+  #                         type, width, height
   # newEntryOther strucutre : eId, oType, oData 
   
   newEntryRef <- list()
@@ -111,7 +111,7 @@ parseEntry <- function(entry)
   
   
   # Access the entry attributes
-  attrs <- xmlAttrs(entry)
+  attrs <- xml_attrs(entry)
   
   
   
@@ -136,37 +136,22 @@ parseEntry <- function(entry)
     eReaction <- NA
   }
   eNames <- unlist(strsplit(attrs[["name"]],split = " "))
-  #if are more than one name per line
-  if(length(eNames) == 1){
-    newEntryRef[[1]]<-data.frame(eId=eId,eName=eNames,eType=eType, eReaction = eReaction,
-                                    stringsAsFactors = F)
-    dupEntry[[1]]<-data.frame(eId=eId, eNames=NA,
-                                  stringsAsFactors = F)
-  }else{
-    dupEntry[[1]]<-data.frame(eId=eId, eNames=attrs[["name"]],
-                                  stringsAsFactors = F)
-    for (idx in 1:length(eNames)) {
-      newEntryRef[[idx]]<-data.frame(eId=eId,eName=eNames[[idx]],eType=eType, eReaction = eReaction,
-                                        stringsAsFactors = F)
-    }
-  }
-  
-  
+
   # Retrieve map attributes
   mLink <- getNamedElement(attrs, "link")
   map <- getNamedElement(attrs, "map")
-  graphics <- xmlChildren(entry)$graphics
+  graphics <- xml_children(entry)
   #eId, mLink, mName, fgcolor, bgcolor,
   #                         type, x, y, width, height
   # Retrieve the N-dimensional attributes
-  g <- parseGraphics(graphics)
+  g <- unlist(xml_attrs(graphics))
 
   # Verify the node type
   if (eType != "group") {
     # Set the map attributes
     component <- NA
   }else if (type == "group") {
-    children <- xmlChildren(entry)
+    children <- xml_children(entry)
     children <- children[names(children) == "component"]
 
     if (length(children) == 0) {
@@ -188,10 +173,29 @@ parseEntry <- function(entry)
     
   }
 
-  newEntryMap[[1]]<-data.frame(eId=eId, map=map, mLink=mLink,
-                               x = g$x, y = g$y, graphicalType = g$graphicalType,
-                               width= g$width, height = g$height,
-                               fgcolor = g$fgcolor, bgcolor = g$bgcolor,
+  #if are more than one name per line
+  if(length(eNames) == 1){
+    newEntryRef[[1]]<-data.frame(eId=eId,eName=eNames,
+                                 eType=eType, eReaction = eReaction, 
+                                 x = g[["x"]], y = g[["y"]],
+                                 stringsAsFactors = F)
+    dupEntry[[1]]<-data.frame(eId=eId, eNames=NA,
+                              stringsAsFactors = F)
+  }else{
+    dupEntry[[1]]<-data.frame(eId=eId, eNames=attrs[["name"]],
+                              stringsAsFactors = F)
+    for (idx in 1:length(eNames)) {
+      newEntryRef[[idx]]<-data.frame(eId=eId,eName=eNames[[idx]],
+                                     eType=eType, eReaction = eReaction,
+                                     x = g[["x"]], y = g[["y"]],
+                                     stringsAsFactors = F)
+    }
+  }
+
+    newEntryMap[[1]]<-data.frame(eId=eId, map=map, mLink=mLink,
+                               graphicalType = g[["type"]],
+                               width= g[["width"]], height = g[["height"]],
+                               fgcolor = g[["fgcolor"]], bgcolor = g[["bgcolor"]],
                                stringsAsFactors = F)
 
   newEntryRef<-do.call(rbind, newEntryRef)
@@ -212,7 +216,7 @@ parseSubType <- function(subtype)
   subtypeDf <- data.frame(name = NA, value = NA, stringsAsFactors = FALSE)
 
   # Access the subtype attributes
-  attrs <- xmlAttrs(subtype)
+  attrs <- xml_attrs(subtype)
 
   # Retrieve the 1-dimensional attributes
   subtypeDf$name <- attrs[["name"]]
@@ -224,27 +228,31 @@ parseSubType <- function(subtype)
 
 parseRelation <- function(relation)
 {
-  # Declare the newEdge dataframe
-  newEdge <- data.frame(entry1 = NA, entry2 = NA, type = NA, subtype = NA, stringsAsFactors = FALSE)
+  # Declare the newRelation dataframe
+  newRelation <- data.frame(entry1 = NA, entry2 = NA, type = NA, 
+                            subtype = NA, value = NA,
+                            stringsAsFactors = FALSE)
 
   # Access the relation attributes
-  attrs <- xmlAttrs(relation)
+  attrs <- xml_attrs(relation)
 
   # Retrieve the 1-dimensional attributes
-  newEdge$entry1 <- attrs[["entry1"]]
-  newEdge$entry2 <- attrs[["entry2"]]
-  newEdge$type <- attrs[["type"]]
+  newRelation$entry1 <- attrs[["entry1"]]
+  newRelation$entry2 <- attrs[["entry2"]]
+  newRelation$type <- attrs[["type"]]
 
   # Retrieve the N-dimensional attributes
-  subtypeNodes <- xmlChildren(relation)
-  subtypes <- sapply(subtypeNodes, parseSubType)
-  subtypes <- paste(subtypes, collapse = " / ")
+  subtypeNodes <- unlist(xml_attrs(xml_children(relation)))
+  
+  # subtypes <- sapply(subtypeNodes, parseSubType)
+  # subtypes <- paste(subtypes, collapse = " / ")
 
   # Apply the subtypes into the dataFrame
-  newEdge$subtype <- subtypes
-
+  newRelation$subtype <- subtypeNodes[["name"]]
+  newRelation$value <- subtypeNodes[["value"]]
+  
   # Return the edge dataFrame
-  return(newEdge)
+  return(newRelation)
 }
 
 parseReaction <- function(reaction)
@@ -262,7 +270,7 @@ parseReaction <- function(reaction)
   dupReactions <- list()
   
   # Access the reaction attributes
-  attrs <- xmlAttrs(reaction)
+  attrs <- xml_attrs(reaction)
 
   # Retrieve the 1-dimensional attributes
   rId <- attrs[["id"]]
@@ -288,7 +296,7 @@ parseReaction <- function(reaction)
   
   #colnames(newReactionRef)<-c("rId", "rName", "rType")
   
-  reactionChildren <- xmlChildren(reaction)
+  reactionChildren <- xml_children(reaction)
 
   
   #get substrates and products
@@ -298,8 +306,8 @@ parseReaction <- function(reaction)
   }else{
     idx<-1
     for(idx in 1:length(reactionChildren)){
-      cpdType <- xmlName(reactionChildren[[idx]])
-      attrs <- xmlAttrs(reactionChildren[[idx]])
+      cpdType <- xml_name(reactionChildren[[idx]])
+      attrs <- xml_attrs(reactionChildren[[idx]])
       cpdId<-attrs[["id"]]
       cpdName<-attrs[["name"]]
       newReactionDef[[idx]]<- data.frame(rId = rId, cpdType=cpdType, cpdId=cpdId, cpdName=cpdName, 
@@ -392,9 +400,28 @@ parseReaction <- function(reaction)
 #' @author
 #' Igor Brandão
 
-KGML2Dataframe <- function(kgml_) {
+KGML2Dataframe <- function(kgml_,
+                           dataType,
+                           dbCon) {
   # Verify and process the KGML file
-  tryCatch(doc <- xmlTreeParse(kgml_, getDTD = FALSE, error = xmlErrorCumulator(immediate = FALSE)),
+
+    # tryCatch(doc <- xmlTreeParse(kgml_, getDTD = FALSE, error = xmlErrorCumulator(immediate = FALSE)),
+    #        error = function(e) {
+    #          fileSize <- file.info(kgml_)$size[1]
+    #          bytes <- sprintf("%d byte%s", fileSize, ifelse(fileSize >
+    #                                                           1, "s", ""))
+    #          msg <- paste("The file", kgml_, "seems not to be a valid KGML file\n")
+    #          if (fileSize < 100L)
+    #            msg <- paste(msg, "[WARNING] File size (", bytes,
+    #                         ") is unsually small; please check.\n", sep = "")
+    #          msg <- paste(msg, "\nDetailed error messages from",
+    #                       "XML::xmlTreeParse:\n", sep = "")
+    #          cat(msg)
+    #          stop(e)
+    #        })
+  
+  error <<- 0
+  tryCatch(doc <- read_xml(kgml_, getDTD = FALSE, error = xmlErrorCumulator(immediate = FALSE)),
            error = function(e) {
              fileSize <- file.info(kgml_)$size[1]
              bytes <- sprintf("%d byte%s", fileSize, ifelse(fileSize >
@@ -408,79 +435,241 @@ KGML2Dataframe <- function(kgml_) {
              cat(msg)
              stop(e)
            })
-
+  
   # Retrieve the XML root
-  r <- xmlRoot(doc)
-
-  # Retrieve the XML root children
-  childnames <- sapply(xmlChildren(r), xmlName)
+  root <- xml_root(doc)
+  #r1<- read_xml(kgml_)
+  #childnames <- sapply(xml_children(root), xml_name)
+  # # r[[1]]
+  # # r[[2]]
+  # # 
+  # # l<-seq(700,800,1)
+  # # length(xmlChildren(r))
+  #    r<-removeChildren(node = r,kids = s)
+  # # 
+  # # saveXML(r, file = file.path(folder,"01teste.xml"))
+  # # r[[1]]
+  # # r[[2]]
+  # 
+  # # Retrieve the XML root children
+  # childnames <- sapply(xmlChildren(r), xmlName)
+  # 
+  # r[names(r)=="entry"]
+  # 
+  # s<-xml_find_first(r1,"//entry[@id='33']")
+  # 
+  # xml_attr(s,"id")<-"33"
+  # 
+  # xml_remove(s)
+  # write_xml(r1,file = "/home/clovis/Projetos/GrupoDalmolin/Igor/gitAPs/data/kgml/ec/01teste.xml")
+  # 
+  # getNodeSet(r1, "//entry[@id='48']")
 
   # Define which children are entries
-  isEntry <- childnames == "entry"
-
+  isEntry<-xml_find_all(root,"//entry")
+  #isEntry <- childnames == "entry"
+  
   # Define which children are relations
-  isRelation <- childnames == "relation"
+  isRelation<-xml_find_all(root,"//relation")
+  # isRelation <- childnames == "relation"
 
   # Define which children are reactions
-  isReaction <- childnames == "reaction"
-
+  isReaction<-xml_find_all(root,"//reaction")
+  # isReaction <- childnames == "reaction"
+  
   # Retrieve the pathway info as dataFrame
-  kegg.pathwayinfo <- parsePathwayInfo(r)
-
+  pathwayinfo <- parsePathwayInfo(root)
+  map <- sub(x = pathwayinfo$name, pattern = "path:",replacement = '')
+  
+  entry<-xml_find_first(root,"//entry[@name='ec:2.7.1.1']") #debug
+  #entry<-isEntry[[1]] #debug
   # Retrieve the pathway entries as dataFrame
-  big.list.of.data.frames <- lapply(r[isEntry], parseEntry)
-  #kegg.nodes <- do.call(rbind, big.list.of.data.frames)
-  kegg.entryRef <- do.call(rbind, lapply(big.list.of.data.frames, `[[`, 1))
-  kegg.entryMap <- do.call(rbind, lapply(big.list.of.data.frames, `[[`, 2))
-  kegg.dupEntry <- do.call(rbind, lapply(big.list.of.data.frames, `[[`, 3))
-  kegg.dupEntry<-na.exclude(kegg.dupEntry)
-  kegg.eDupReaction <- do.call(rbind, lapply(big.list.of.data.frames, `[[`, 4))
-  kegg.eDupReaction<-na.exclude(kegg.eDupReaction)
-  rm(big.list.of.data.frames)
+  tryCatch(dataList <- lapply(isEntry, parseEntry),
+           error = function(e) {
+             cat("\tError processing", basename(kgml_), "file.\n")
+             cat(file = logFile, append = T,
+                 "\tError processing", basename(kgml_), "file.\n")
+             error<<-1
+             return(NULL)
+           })
+  if(error != 0){
+    return(0)
+  }
+             
+           
+  #rearange in dataframes
+  entryRef <- do.call(rbind, lapply(dataList, `[[`, 1))
+  entryMap <- do.call(rbind, lapply(dataList, `[[`, 2))
+  dupEntry <- do.call(rbind, lapply(dataList, `[[`, 3))
+  dupEntry<-na.exclude(dupEntry)
+  eDupReaction <- do.call(rbind, lapply(dataList, `[[`, 4))
+  eDupReaction<-na.exclude(eDupReaction)
+  rm(dataList)
 
+  relation<-xml_find_first(root,"//relation") #debug
   # Retrieve the pathway edges as dataFrame
-  big.list.of.data.frames <- lapply(r[isRelation], parseRelation)
-  kegg.edges <- do.call(rbind, big.list.of.data.frames)
-  rm(big.list.of.data.frames)
+  tryCatch(dataList <- lapply(isRelation, parseRelation),
+                error = function(e) {
+                  cat("\tError processing", basename(kgml_), "file.\n")
+                  cat(file = logFile, append = T,
+                      "\tError processing", basename(kgml_), "file.\n")
+                  error<<-1
+                  return(NULL)
+                })
+  if(error != 0){
+    return(0)
+  }
+  
+  relationRef <- do.call(rbind, dataList)
+  rm(dataList)
 
   # Retrieve the pathway reactions as dataFrame
-  big.list.of.data.frames <- lapply(r[isReaction], parseReaction)
-  # kegg.reactions <- do.call(rbind, big.list.of.data.frames)
-  kegg.reactionsRef <- do.call(rbind, lapply(big.list.of.data.frames, `[[`, 1))
-  kegg.reactionsDef <- do.call(rbind, lapply(big.list.of.data.frames, `[[`, 2))
-  kegg.rDupReaction <- do.call(rbind, lapply(big.list.of.data.frames, `[[`, 3))
-  kegg.rDupReaction<-na.exclude(kegg.rDupReaction)
-  rm(big.list.of.data.frames)
+  
+  tryCatch(dataList <- lapply(isReaction, parseReaction),
+                error = function(e) {
+                  cat("\tError processing", basename(kgml_), "file.\n")
+                  cat(file = logFile, append = T,
+                      "\tError processing", basename(kgml_), "file.\n")
+                  error<<-0
+                  error<<-1
+                  return(NULL)
+                })
+  if(error != 0){
+    return(0)
+  }
+  
+  # reactions <- do.call(rbind, dataList)
+  reactionsRef <- do.call(rbind, lapply(dataList, `[[`, 1))
+  reactionsDef <- do.call(rbind, lapply(dataList, `[[`, 2))
+  rDupReaction <- do.call(rbind, lapply(dataList, `[[`, 3))
+  rDupReaction<-na.exclude(rDupReaction)
+  rm(dataList)
   
   #separate enzimes from maps and compounds
-  enzimes<-kegg.entryRef[kegg.entryRef$eType == 'enzyme',
-                         c("eId","eName","eReaction")]
-  #remove duplicated pair enzime + reaction
-  enzimes<-enzimes[!duplicated(enzimes[,c("eName","eReaction")]),]
+  enzimes<-entryRef[entryRef$eType == 'enzyme',]
+  compounds<-entryRef[entryRef$eType == 'compound',]
+  compounds$cDesc<-''
+  # #remove duplicated pair enzime + reaction
+  # enzimes<-enzimes[!duplicated(enzimes[,c("eName","eReaction")]),]
   
   # To maintain always the lower name
   enzimes<-enzimes[order(enzimes$eName),]
   
+  
+  
   #colapse alternative enzimes for the same reaction
   nodes<-enzimes[!duplicated(enzimes[,c("eReaction")]),]
-  altenNodes<-enzimes[duplicated(enzimes[,c("eReaction")]),]
+  nodesDuplic<-enzimes[duplicated(enzimes[,c("eReaction")]),]
+  nodesDuplic<- merge(nodesDuplic, nodes[,c("eId","eName",
+                                            "eReaction",
+                                            "x","y")],
+                      by="eReaction")
   
+  #nodes<-current_kgml$nodes
+  map <- pathwayinfo$number
+
+
+  i=2 #debug
+  # dbDisconnect(dbCon) #debug
+  # dbCon <- dbConnect(RSQLite::SQLite(), dbFile)#debug
+  
+  #something is wrong with data?
+  if(isTRUE(is.null(nrow(compounds))) | 
+     isTRUE(nrow(compounds) == 0) |
+     isTRUE(is.null(nrow(reactionsRef))) | 
+     isTRUE(nrow(reactionsRef) == 0)|
+     isTRUE(is.null(nrow(enzimes))) | 
+     isTRUE(nrow(enzimes) == 0) |
+     isTRUE(is.null(nrow(relationRef))) | 
+     isTRUE(nrow(relationRef) == 0)){
+    cat("\tError processing", basename(kgml_), "file.\n")
+    cat(file = logFile, append = T,
+        "\tError processing", basename(kgml_), "file.\n")
+    return(0)
+  }
+    
+    
+  if(dataType == 'ec'){
+    #Insert pathway information into database
+    pId <- do.call(rbind, insertPathInfo(pathwayinfo))[1]
+                   
+    enzimes$pId<-pId
+    compounds$pId<-pId
+    reactionsRef$pId<-pId
+    reactionsDef$pId<-pId
+    
+    compoundsNId <- do.call(rbind, 
+                   apply(X = compounds,
+                         MARGIN = 1,
+                         insertCompound))
+
+    ltEnzReac<-list(enzimes,reactionsRef, 
+                    reactionsDef, compoundsNId,
+                    pId) #debug
+    ltEnzReac <- insertEnzReac(list(enzimes,reactionsRef, 
+                       reactionsDef, compoundsNId, 
+                       pId))
+    
+    enzimes2<-ltEnzReac[[1]]
+    reactionsRef2 <- ltEnzReac[[2]]
+    reactionsDef2 <- ltEnzReac[[3]]
+    
+    #remove all maplinks
+    relationRef2 <- relationRef[relationRef$type == "ECrel",]
+    #get entry1 newId
+    relationRef2<- merge(relationRef2,
+                         enzimes2[,c("newId","oldId")],
+                         by.x = "entry1",
+                         by.y = "oldId",
+                         all.x = T)
+    colnames(relationRef2)[c(1,6)] <- c("eOldId1","eNewId1")
+    #get entry2 newId
+    relationRef2<- merge(relationRef2,
+                         enzimes2[,c("newId","oldId")],
+                         by.x = "entry2",
+                         by.y = "oldId",
+                         all.x = T)
+    colnames(relationRef2)[c(1,7)] <- c("eOldId2","eNewId2")
+    #get compound newId
+    relationRef2 <- merge(relationRef2,
+                          compoundsNId[,c("newId","oldId")],
+                          by.x = "value",
+                          by.y = "oldId",
+                          all.x = T)
+    colnames(relationRef2)[c(1,8)] <-c("cOldId","cNewId")
+    
+    relationRef2 <- na.exclude(relationRef2)
+    
+    relationRef3 <- do.call(rbind, 
+                            apply(X = relationRef2,
+                                  MARGIN = 1,
+                                  insertRelation))
+    
+    
+    #atualizar a função de inserçaõ de reação em insertEnzReac
+    #insert compound information
+    
+    
+    #ecNodes2Db(nodes, map)
+    }
+
 
   # Create a list with pathway dataFrames info
-  current_kgml <- list(pathwayinfo = kegg.pathwayinfo, 
-                       entryRef = kegg.entryRef, 
-                       entryMap = kegg.entryMap,
-                       dupEntry = kegg.dupEntry,
-                       eDupReaction = kegg.eDupReaction,
-                       edges = kegg.edges,
-                       reactionsRef = kegg.reactionsRef,
-                       reactionsDef = kegg.reactionsDef,
-                       rDupReaction = kegg.rDupReaction,
-                       nodes = nodes,
-                       altenNodes = altenNodes)
-
-  # Return the list with pathway dataFrames info
-  return(current_kgml)
+  # current_kgml <- list(pathwayinfo = pathwayinfo, 
+  #                      entryRef = entryRef, 
+  #                      entryMap = entryMap,
+  #                      dupEntry = dupEntry,
+  #                      eDupReaction = eDupReaction,
+  #                      edges = edges,
+  #                      reactionsRef = reactionsRef,
+  #                      reactionsDef = reactionsDef,
+  #                      rDupReaction = rDupReaction,
+  #                      nodes = nodes,
+  #                      nodesDuplic = nodesDuplic)
+  # 
+  # # Return the list with pathway dataFrames info
+  # return(current_kgml)
+#  }
 }
 
 #' Get the KEGG kgml file and convert it into graph

@@ -79,8 +79,8 @@ generatePathwayDataFromKGML <- function(removeNoise_=TRUE) {
   reference_pathway <- 'ec'
 
   # Get the list of files
-  folder = paste0("./output/kgml/", reference_pathway, "/")
-  #kgml_list <- list.files(path=folder, pattern='*.xml')
+  folder = file.path("./output/kgml/", reference_pathway, "/")
+  kgml_list <- list.files(path=folder, pattern='*.xml')
   
   #*********************************************************************************#
   # IMPORTANTE: Aqui estou reduzindo a lista das pathways para não ficar tão pesado!
@@ -96,7 +96,7 @@ generatePathwayDataFromKGML <- function(removeNoise_=TRUE) {
   # Check if the folder contains files
   if (is.null(kgml_list) | length(kgml_list) == 0) {
     # Status message
-    printMessage("There aren't available pathways...")
+    stop("There aren't available pathways...")
     return(FALSE)
   }
   file = kgml_list[1]
@@ -104,7 +104,7 @@ generatePathwayDataFromKGML <- function(removeNoise_=TRUE) {
   lapply(kgml_list, function(file) {
 
     # Load the dataframe
-    current_kgml <- KGML2Dataframe(paste0(folder, file))
+    current_kgml <- KGML2Dataframe(file.path(folder, file))
     save(current_kgml,file="/home/clovis/Projetos/GrupoDalmolin/Igor/essencialidade/bin/calculoAP/kgml.RData")
 
     # Get the pathway code
@@ -199,6 +199,13 @@ generatePathwayDataFromKGML <- function(removeNoise_=TRUE) {
         pathwayData$is_bottleneck[which(pathwayData$name %in% graphBottleneck)] <- 1
       }
 
+      
+      
+      
+      
+      
+      
+# Parei aqui ----      
       # Remove the duplicated nodes
       pathwayData <- pathwayData[!duplicated(pathwayData$name),]
 
