@@ -68,5 +68,7 @@ downloadKGML(dirBase = dirBase,
              organisms = "some", 
              skip = T) 
 
-
+generateDataFromKGML(dirBase = dirBase,
+                     dataType = 'ec',
+                     skip = F)
 
