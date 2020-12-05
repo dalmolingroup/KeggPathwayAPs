@@ -1226,8 +1226,15 @@ getEdgesFromEcs <- function(ecs,
 
 showGraph<-function(ecs = NA, 
                     pathway,
-                    adj = T){
-  pathway <- "ec00010"
+                    adj = T,
+                    plot = T){
+  
+  dbDir<<-file.path(dirBase,"data","database")
+  dbFile<<-file.path(dbDir,"dictionary.db")
+  #conect and test dictionary
+  dbCon <<- dbConnect(RSQLite::SQLite(), dbFile)
+    
+  #pathway <- "ec00010"
   
   if(is.na(ecs)){
     sql<-paste0('select eName 
@@ -1255,11 +1262,11 @@ showGraph<-function(ecs = NA,
   
   edgeNames<-E(g1)$eName
   edge_attr(g1)
-    #print(grapho1, e=TRUE, v=TRUE)
-  edge_attr(grapho1) <- list(color = rep("green", gsize(grapho1)),
-                       curved = rep(F, gsize(grapho1)))
-  edge_attr(grapho1, "label") <- edgeNames 
-  #tkplot(grapho1)
+    #print(g1, e=TRUE, v=TRUE)
+  edge_attr(g1) <- list(color = rep("green", gsize(g1)),
+                       curved = rep(F, gsize(g1)))
+  edge_attr(g1, "label") <- edgeNames 
+  #tkplot(g1)
     g2 <- make_line_graph(g1)
   
   vertex_attr(g2, "label")<- edgeNames
@@ -1270,7 +1277,7 @@ showGraph<-function(ecs = NA,
                       stringsAsFactors = F)
   
   #remove duplicity
-  g3<-as_data_frame(grapho2,what = "edges")
+  g3<-as_data_frame(g2,what = "edges")
   
   nrow(g3[g3$from == g3$to,])
   sum(duplicated(vNames$label))
@@ -1290,13 +1297,13 @@ showGraph<-function(ecs = NA,
   g3<-g3[g3$from != g3$to,]
   
   g4<-graph_from_data_frame(g3, directed = T)
+#  tkplot(g2)
+  tkplot(g4)
   
   return(g4)
-  #tkplot(g2)
-  #tkplot(g4)
 
   #plot(edges)
-  
+  dbDisconnect(dbCon)  
 }
 
 #FIM ----

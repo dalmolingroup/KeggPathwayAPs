@@ -84,3 +84,7 @@ generateDataFromKGML(dirBase = dirBase,
                      dataType = 'ec',
                      skip = T)
 
+createNodesFromEC(dirBase = dirBase, skip = T)
+
+showGraph(pathway = "ec00300", plot = T)
+
