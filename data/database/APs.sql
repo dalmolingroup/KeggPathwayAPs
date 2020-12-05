@@ -1,3 +1,10 @@
+DROP VIEW IF EXISTS subsProdNames ;
+DROP VIEW IF EXISTS fCompound ;
+drop VIEW IF EXISTS wNamesSubsProd;
+DROP VIEW IF EXISTS wAllNodes;
+
+
+DROP TABLE IF EXISTS "reactionAssociation";
 DROP TABLE IF EXISTS "nodesOnPath" ;
 DROP TABLE IF EXISTS interaction ;
 DROP TABLE IF EXISTS "enzPathNode" ;
@@ -9,15 +16,24 @@ DROP TABLE IF EXISTS "compOnPath" ;
 DROP TABLE IF EXISTS reaction ;
 DROP TABLE IF EXISTS compound ;
 DROP TABLE IF EXISTS enzime ;
-DROP TABLE IF EXISTS nodes ;
+DROP TABLE IF EXISTS edges ;
 DROP TABLE IF EXISTS path ;
+DROP TABLE IF EXISTS fakeEdge;
+DROP TABLE IF EXISTS fakeNode;
 
+CREATE TABLE "fakeEdge" (
+	"nextId" integer
+);
 
-CREATE TABLE nodes (
+INSERT INTO fakeEdge VALUES (100000);
+
+CREATE TABLE edges (
 	"nId" integer NOT NULL,
-	"nName" text,
-	CONSTRAINT nodes_pk PRIMARY KEY ("nId")
-
+	"nName" text NOT NULL,
+	subs integer NOT NULL,
+	prod integer NOT NULL,
+	type text NOT NULL,
+	reversible integer NOT NULL
 );
 
 CREATE TABLE enzime (
@@ -54,8 +70,10 @@ CREATE TABLE reaction (
 	"rName" text NOT NULL ,
 	"rReversible" integer NOT NULL,
 	CONSTRAINT reaction_pk PRIMARY KEY ("rId")
-
 );
+
+INSERT INTO reaction 
+VALUES (0, "None", 1);
 
 CREATE TABLE compound (
 	"cId" integer NOT NULL,
@@ -64,6 +82,15 @@ CREATE TABLE compound (
 	CONSTRAINT compound_pk PRIMARY KEY ("cId")
 
 );
+
+
+CREATE TABLE fakeNode (
+	"cId" integer NOT NULL,
+	"cName" text NOT NULL ,
+	"cDesc" text,
+	CONSTRAINT compound_pk PRIMARY KEY ("cId")
+);
+
 
 CREATE TABLE interaction (
 	"eId1" integer NOT NULL,
@@ -92,6 +119,7 @@ CREATE TABLE "subsProd" (
 	"rId" integer NOT NULL,
 	"cId" integer NOT NULL,
 	"spType" TEXT NOT NULL,
+	secondary integer default 0,
 	FOREIGN KEY ("rId")
     REFERENCES reaction ("rId"),
     FOREIGN KEY ("cId")
@@ -138,3 +166,50 @@ CREATE TABLE "compOnPath" (
     FOREIGN KEY ("pId")
     REFERENCES path ("pId") 
 );
+
+CREATE TABLE "reactionAssociation" (
+	"rId" integer NOT NULL,
+	"mainRId" integer NOT NULL,
+	FOREIGN KEY ("rId")
+    REFERENCES reaction ("rId")
+);
+
+PRAGMA foreign_keys=OFF;
+INSERT INTO reactionAssociation
+VALUES (0,0);
+PRAGMA foreign_keys=ON;
+
+
+
+create VIEW subsProdNames as
+select r.rName || ' ' || p.pName as rId, s.spType || ' ' || c.cName as cId
+  from subsProd as s inner JOIN
+		reaction as r on s.rId = r.rId inner JOIN
+		reacOnPath as rp on r.rId = rp.rId INNER JOIN
+		path as p on p.pId = rp.pId INNER JOIN
+		compound as c on c.cId = s.cId
+  where secondary == 0
+  order by rId, spType DESC, cId;
+  
+CREATE VIEW fCompound as
+select DISTINCT c1.cId, c1.cName ,p.pId, p.pName
+from compound  as c1 INNER JOIN
+	compOnPath as c2 on c1.cId = c2.cId INNER JOIN
+	path as p on p.pId = c2.pId
+where c1.cId not in (select DISTINCT cId from interaction);
+
+
+create VIEW wNamesSubsProd as
+select r.rName, p.pName, s.spType , c.cName as cId
+  from subsProd as s inner JOIN
+		reaction as r on s.rId = r.rId inner JOIN
+		reacOnPath as rp on r.rId = rp.rId INNER JOIN
+		path as p on p.pId = rp.pId INNER JOIN
+		compound as c on c.cId = s.cId
+  where secondary == 0
+  order by r.rId, spType DESC, c.cId;
+  
+create VIEW wAllNodes as
+select * from compound
+UNION
+select * from fakeNode;

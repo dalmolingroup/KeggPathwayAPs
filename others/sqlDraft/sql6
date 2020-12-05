@@ -1,0 +1,5 @@
+select s.rId , s.cId, spType
+from subsProd as s INNER JOIN 
+	compOnPath as c2 on s.cId = C2.cId INNER JOIN
+	path as p on p.pId = C2.pId
+where p.pId = 2 and s.rId= 65

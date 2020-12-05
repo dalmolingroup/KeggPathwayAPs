@@ -23,6 +23,20 @@
 # Import the necessary libraries
 library("DBI")
 
+
+createDB <- function(dbTemplate, dbFile, skip = T){
+  if(skip){
+    cat("Skiping database creation... \n\n")
+    return(0)
+  }
+  
+  command<-paste("cat ",dbTemplate,
+                 " | sqlite3 ", dbFile)
+  system(command)
+  
+}
+
+
 getNextId <- function(table){
   # ids for each table
   ids<-c("node"="nId",
@@ -39,6 +53,25 @@ getNextId <- function(table){
     nextId <- 1
   }
   return(nextId)
+}
+
+getNextFakeEdge <- function(){
+  sql <- 'select nextId
+          from fakeEdge'
+  nextId<-as.numeric(dbGetQuery(dbCon,sql)[1,1])
+
+  sql <- paste0('update fakeEdge set nextId = ',nextId+1)
+  resQuery <- dbExecute(dbCon,sql)
+  
+  return(nextId)
+  # sql <- 'select max(nId) as nextId
+  #         from edges
+  #         where type = "F"'
+  # nextId<-as.numeric(dbGetQuery(dbCon,sql)[1,1])
+  # if(is.na(nextId)){
+  #   nextId<-100000
+  # }
+  # return(nextId)
 }
 
 insertPathInfo<-function(pathwayinfo){
@@ -530,7 +563,7 @@ insertSubsProd<-function(rDef){
                  ' VALUES ("',
                  substring(rNewId,2),'","',
                  substring(cNewId,2),'","',
-                 cType,'");')
+                 cType,'",0);')
   resQuery <- dbExecute(dbCon,sql)
   
   return(data.frame(oldcId = oldcId,
@@ -549,6 +582,100 @@ insertSubsProd<-function(rDef){
                       cNewId = cNewId,
                       stringsAsFactors = F))
   }
+}
+
+
+createNodes <- function(){
+  #detect duplicated substrate product tuples
+  # sql <- "select rId, spType || cId as cId
+  # from subsProd
+  # where secondary == 0
+  # order by rId, spType DESC, cId"
+  
+  
+  #reactions with problems
+  #0 substrate or 0 product
+  sql<-"SELECT rId 
+        FROM (
+          select tr.rId, tr.rName, 
+          sum(CASE WHEN spType = 's' THEN 1 ELSE 0 END) as s,
+          sum(CASE WHEN spType = 'p' THEN 1 ELSE 0 END) as p
+          from subsProd as ts inner JOIN
+          reaction as tr on tr.rid = ts.rid 
+          where secondary = 0 
+          GROUP by tr.rId
+        )
+        where s = 0 or p = 0"
+  badReactions <- dbGetQuery(dbCon,sql)
+  
+  badReactions<-paste0(badReactions)
+  badReactions<- substring(badReactions,2)
+  
+  
+  
+  # sql <- paste0("select *
+  #   from subsProdNames
+  #   where rId not in ",badReactions)
+
+  sql <- paste0('select r.rId,
+                        case when r.rReversible = 0 then "R" ELSE "I" END ||
+                        " " || sp.spType || sp.cId as cId
+                from subsProd as sp INNER JOIN
+                    reaction as r on r.rId = sp.rId 
+                where sp.secondary == 0 and 
+                r.rId not in ',
+                badReactions,
+                " order by r.rId, sp.spType DESC, sp.cId")
+  reactions <- dbGetQuery(dbCon,sql)
+  
+  
+  tmp<-reactions %>% 
+    group_by(rId) %>% 
+    mutate(dup_count = sequence(dplyr::n()), 
+           key = paste("cpd", dup_count, sep = "")) %>% 
+    tidyr::spread(., 
+                  key = key,
+                  value = cId) %>% 
+    tidyr::fill(dplyr::starts_with("cpd"), .direction = "up") %>% 
+    dplyr::distinct(., rId, .keep_all = TRUE)
+  
+  
+  reactions2<- do.call(rbind,
+                      apply(X = tmp, MARGIN = 1,
+                            FUN = function(x){
+                              txt<-''
+                              for(idx in 3:length(x)){
+                                if(is.na(x[idx])){
+                                  next
+                                }
+                                txt <- paste(txt, x[idx])
+                              }
+                              return(data.frame(rId=x[1],
+                                                cpd=txt,
+                                                stringsAsFactors = F))
+                            }))
+  reactList<-reactions2 %>% 
+    group_by(cpd) %>% 
+    mutate(dup_count = sequence(dplyr::n()), 
+           key = paste("rId", dup_count, sep = "")) %>% 
+    tidyr::spread(., 
+                  key = key,
+                  value = rId) %>% 
+    tidyr::fill(dplyr::starts_with("rId"), .direction = "up") %>% 
+    dplyr::distinct(., cpd, .keep_all = TRUE)
+  
+  #clean table and insert reaction correlations
+  prepareReacAssos()
+  lixo<-apply(X = reactList, MARGIN = 1,
+        insertReacList)
+  
+  #create graph edges
+  counter <<- 1
+  total <<- nrow(reactList)
+  lixo<-apply(X = reactList, MARGIN = 1,
+        insertEdges)
+  
+  rm(counter, total)
 }
 
 
@@ -616,6 +743,563 @@ searchValue <- function(table, fields, values){
     }
 }
 
+prepareReacAssos <- function(){
+  #prepare the table reactionAssociation to receive data
+  sql <- "DELETE FROM reactionAssociation"
+  resQuery <- dbExecute(dbCon,sql)
+  sql <- "INSERT INTO reactionAssociation
+          SELECT DISTINCT rId, 0
+          FROM reaction;"
+  resQuery <- dbExecute(dbCon,sql)
+}
+
+#reactList2<-reactList[1,] #debug
+insertReacList <- function(reactList2){
+  #make the corralation between reactions with same 
+  # subtrate and product
+  reactList2<-reactList2[-2]#$dup_count<-NULL
+  reactList2<-as.vector((reactList2[!is.na(reactList2)]))
+  #cat(reactList2,'\n')
+  idx<-3
+  #if(length(reactList2) > 2){
+    for(idx in 2:length(reactList2)){
+      sql <- paste0("select * 
+                    from reactionAssociation
+                    where rId = ", reactList2[idx]," and 
+                    mainRId != 0;")
+      resQuery <- dbGetQuery(dbCon,sql)
+      if(nrow(resQuery) > 0){
+        cat("Reaction", reactList2[idx], 'already processed. Overwriting!')
+      }
+      sql<-paste0('UPDATE reactionAssociation
+          SET mainRId = ',reactList2[2],'
+          WHERE rId = ',reactList2[idx],';')
+      resQuery <- dbExecute(dbCon,sql)
+    }
+  #}
+}
+
+# reactList2<-reactList[9,] #debug
+# insertEdges(reactList2)
+insertEdges <- function(reactList2){
+  cat("Inserting edges [",counter,"of",total,"]\n")
+  counter<<-counter+1
+  reactList2<-reactList2[-2]#$dup_count<-NULL
+  reactList2<-as.vector((reactList2[!is.na(reactList2)]))
+  #cat(reactList2,'\n')
+  idx<-3
+  nId<-as.numeric(trim(reactList2[2]))
+  # sql <- paste0('select rName
+  #               from reaction
+  #               where rId = ',nId)
+  # 
+  # rName<- substring(dbGetQuery(dbCon,sql)[1,1],4)
+
+  sql <- paste0('SELECT eName
+                FROM enzime as e INNER JOIN
+                    enzReac as er on er.eId = e.eId
+                WHERE er.rId =', nId,'
+                order by eName')
+
+  eName<- dbGetQuery(dbCon,sql)
+  
+  nName <- eName[1,1]
+  fName <- paste0('f',
+                  substring(
+                    gsub(pattern = '[.]',
+                         replacement = '',
+                         nName),4) )
+  if(nrow(eName)>1){
+    nName<-paste0(nName,"+")
+  }
+  
+  reversib <- substr(trim(reactList2[1]),1,1)
+  compounds <- gsub(pattern = paste0(' ',reversib,' '),
+                   replacement = ':',
+                   x = reactList2[1])
+  # is the reaction reversible?
+  isRevers <- ifelse(reversib == 'I', 0, 1)
+  compounds <- unlist(strsplit(compounds, split = ':'))[-1]
+  #vectors for substrate and product
+  subs <- vector()
+  prod <- vector()
+  #separete subs an prod
+  for(idx in 1: length(compounds)){
+    if(substr(compounds[idx],1,1) == "s"){
+      subs <- c(subs, substring(compounds[idx],2))
+    }else{
+      prod <- c(prod, substring(compounds[idx],2))
+    }
+  }
+  edgeList <- list()
+  idxEdge <- 1
+  fakeIdS <- 0
+  fakeIdP <- 0
+  #create fake edges to agrupate multiple compound
+  idx2=1
+  if(length(subs) > 1){
+    fakeIdS<- getNextFakeEdge()
+    for(idx2 in 1:length(subs)){
+      fakeNameS <- paste0(fName,'S',idx2)
+      edgeList[[idxEdge]]<-data.frame(nId = nId,
+                                      nName = fakeNameS,
+                                      subs=as.numeric(subs[idx2]),
+                                      prod=fakeIdS,
+                                      type = "F",
+                                      reversible = isRevers,
+                                      stringsAsFactors = F)
+      idxEdge <- idxEdge +1
+      if(isRevers == 1){
+        edgeList[[idxEdge]]<-data.frame(nId = nId,
+                                        nName = fakeNameS,
+                                        subs=fakeIdS,
+                                        prod=as.numeric(subs[idx2]),
+                                        type = "F",
+                                        reversible = isRevers,
+                                        stringsAsFactors = F)
+      }
+        idxEdge <- idxEdge +1
+    }
+  }
+  if(length(prod) > 1){
+    fakeIdP<- getNextFakeEdge()
+    for(idx2 in 1:length(prod)){
+      fakeNameP <- paste0(fName,'P',idx2)
+      edgeList[[idxEdge]]<-data.frame(nId = nId,
+                                      nName = fakeNameP,
+                                      subs=fakeIdP,
+                                      prod=as.numeric(prod[idx2]),
+                                      type = "F",
+                                      reversible = isRevers,
+                                      stringsAsFactors = F)
+
+      idxEdge <- idxEdge +1
+      if(isRevers == 1){
+        edgeList[[idxEdge]]<-data.frame(nId = nId,
+                                        nName = fakeNameP,
+                                        subs= as.numeric(prod[idx2]),
+                                        prod= fakeIdP,
+                                        type = "F",
+                                        reversible = isRevers,
+                                        stringsAsFactors = F)
+      }
+      idxEdge <- idxEdge +1
+    }
+  }
+  #Create the real edge
+  #add edge if both fake
+  if(fakeIdS !=0 & fakeIdP !=0){
+    edgeList[[idxEdge]]<-data.frame(nId = nId,
+                                    nName = fakeNameP,
+                                    subs=fakeIdS,
+                                    prod=fakeIdP,
+                                    type = "R",
+                                    reversible = isRevers,
+                                    stringsAsFactors = F)
+    
+    idxEdge <- idxEdge +1
+    if(isRevers == 1){
+      edgeList[[idxEdge]]<-data.frame(nId = nId,
+                                      nName = fakeNameP,
+                                      subs= fakeIdP,
+                                      prod= fakeIdS,
+                                      type = "R",
+                                      reversible = isRevers,
+                                      stringsAsFactors = F)
+    }
+    idxEdge <- idxEdge +1
+  }
+  #add edge if S is fake
+  if(fakeIdS !=0 & fakeIdP ==0){
+    edgeList[[idxEdge]]<-data.frame(nId = nId,
+                                    nName = nName,
+                                    subs=fakeIdS,
+                                    prod= prod[1],
+                                    type = "R",
+                                    reversible = isRevers,
+                                    stringsAsFactors = F)
+    
+    idxEdge <- idxEdge +1
+    if(isRevers == 1){
+      edgeList[[idxEdge]]<-data.frame(nId = nId,
+                                      nName = nName,
+                                      subs= prod[1],
+                                      prod= fakeIdS,
+                                      type = "R",
+                                      reversible = isRevers,
+                                      stringsAsFactors = F)
+    }
+    idxEdge <- idxEdge +1
+  }
+  #add edge if P is fake
+  if(fakeIdS ==0 & fakeIdP !=0){
+    edgeList[[idxEdge]]<-data.frame(nId = nId,
+                                    nName = nName,
+                                    subs = subs[1],
+                                    prod=fakeIdP,
+                                    type = "R",
+                                    reversible = isRevers,
+                                    stringsAsFactors = F)
+    
+    idxEdge <- idxEdge +1
+    if(isRevers == 1){
+      edgeList[[idxEdge]]<-data.frame(nId = nId,
+                                      nName = nName,
+                                      subs= fakeIdP,
+                                      prod=  subs[1],
+                                      type = "R",
+                                      reversible = isRevers,
+                                      stringsAsFactors = F)
+    }
+    idxEdge <- idxEdge +1
+  }
+  #add edge if both are not fake
+  if(fakeIdS ==0 & fakeIdP ==0){
+    edgeList[[idxEdge]]<-data.frame(nId = nId,
+                                    nName = nName,
+                                    subs=subs[1],
+                                    prod=prod[1],
+                                    type = "R",
+                                    reversible = isRevers,
+                                    stringsAsFactors = F)
+    
+    idxEdge <- idxEdge +1
+    if(isRevers == 1){
+      edgeList[[idxEdge]]<-data.frame(nId = nId,
+                                      nName = nName,
+                                      subs= prod[1],
+                                      prod= subs[1],
+                                      type = "R",
+                                      reversible = isRevers,
+                                      stringsAsFactors = F)
+    }
+    idxEdge <- idxEdge +1
+  }
+  
+  edgeList <- do.call(rbind, edgeList)
+  
+  #create fake node information
+  if(fakeIdS !=0){
+    sql <- paste0(
+      'INSERT INTO fakeNode
+                  VALUES (',
+          fakeIdS,',"',
+          fakeNameS, '","");'
+    )
+    resQuery <- dbExecute(dbCon,sql)
+  }
+    
+  if(fakeIdP !=0){
+    sql <- paste0(
+      'INSERT INTO fakeNode
+                  VALUES (',
+      fakeIdP,',"',
+      fakeNameP, '","");'
+    )
+    resQuery <- dbExecute(dbCon,sql)
+    
+  }
+  lixo<- apply(X = edgeList, MARGIN = 1,
+        FUN = function(x){
+          sql <- paste0(
+                'INSERT INTO edges
+                  VALUES (',
+                  x["nId"],',"',
+                  x["nName"], '",',
+                  x["subs"],',',
+                  x["prod"],',"',
+                  x["type"],'",',
+                  x["reversible"],');'
+                  )
+          resQuery <- dbExecute(dbCon,sql)
+          return(0)
+        })
+  return(0)
+}
+
+
+
+
+
+keggErrorsFix <- function(){
+  #correct some erros found on KEGG xml where
+  # some reactions have inconsistences from one path to another
+  sql<-'select distinct rId, rName
+        from reaction'
+  react<-dbGetQuery(dbCon,sql)
+  #manual solutions
+  sql<-'select distinct cId, cName
+        from compound
+        where cName in ("cpd:C00022","cpd:C00024", "cpd:C00084","cpd:C03589",
+                        "cpd:C00048","cpd:C00100","cpd:C06027","cpd:C00036",
+                        "cpd:C00158","cpd:C00010")'
+  cpd<-dbGetQuery(dbCon,sql)
+  errors<-list()
+  idx=1744 #debug
+  counter = 0
+  errorlist<- list()
+  for(idx in 1:nrow(react)){
+    sql<-paste0('select cId
+                from subsProd
+                where spType = "s" and
+                      secondary = 0 and
+                      rId = ',react$rId[idx])
+    subs <- sort(as.vector(dbGetQuery(dbCon,sql)[,1]))
+    
+    sql<-paste0('select cId
+                from subsProd
+                where spType = "p" and
+                      secondary = 0 and
+                      rId = ',react$rId[idx])
+    prod <- sort(as.vector(dbGetQuery(dbCon,sql)[,1]))
+    
+    if(sum(prod %in% subs) == length(prod)&
+       length(prod)>0){
+      counter <-counter+1
+      errorlist[[counter]]<- data.frame(name = react$rName[idx],
+                                        id = react$rId[idx],
+                                        subs=length(subs),
+                                        prod=length(prod),
+                                        stringsAsFactors = F)
+      cat(counter,": Error in ", 
+          react$rName[idx],
+          length(prod),
+          '. Correcting...\n')
+      cat(file = logFile, append = T,
+          counter,": Error in ", 
+          react$rName[idx],
+          react$rId[idx],
+          length(subs),
+          length(prod),'.Correcting...\n')
+      #remove first prod and last subs
+      if(length(prod) == 2 &
+         length(subs) == 2){
+        sql<- paste0('delete from subsProd
+                      where spType = "s" and
+                            secondary = 0 and
+                            rId = ',react$rId[idx], ' and 
+                            cId = ', subs[1])
+        resQuery <- dbExecute(dbCon,sql) 
+        sql<- paste0('delete from subsProd
+                      where spType = "p" and
+                            secondary = 0 and
+                            rId = ',react$rId[idx], ' and 
+                            cId = ', prod[2])
+        resQuery <- dbExecute(dbCon,sql) 
+      }else{
+        #manual solutions
+        if(react$rName[idx] == 'rn:R00750'){
+          #bases on ec00360
+          sql<- paste0('delete from subsProd
+                      where spType = "p" and
+                            secondary = 0 and
+                            rId = ',react$rId[idx],' and 
+                            cId = ', cpd$cId[cpd$cName == "cpd:C00022"])
+          resQuery <- dbExecute(dbCon,sql) 
+          sql<- paste0('delete from subsProd
+                      where spType = "p" and
+                            secondary = 0 and
+                            rId = ',react$rId[idx],' and  
+                            cId = ', cpd$cId[cpd$cName == "cpd:C00084"])
+          resQuery <- dbExecute(dbCon,sql) 
+          sql<- paste0('delete from subsProd
+                      where spType = "s" and
+                            secondary = 0 and
+                            rId = ',react$rId[idx],' and 
+                            cId = ', cpd$cId[cpd$cName == "cpd:C03589"])
+          resQuery <- dbExecute(dbCon,sql) 
+          
+        }else if(react$rName[idx] == 'rn:R00934'){
+          #bases on ec00630
+          sql<- paste0('delete from subsProd
+                      where spType = "p" and
+                            secondary = 0 and
+                            rId = ',react$rId[idx],' and 
+                            cId = ', cpd$cId[cpd$cName == "cpd:C06027"])
+          resQuery <- dbExecute(dbCon,sql) 
+          sql<- paste0('delete from subsProd
+                      where spType = "s" and
+                            secondary = 0 and
+                            rId = ',react$rId[idx],' and  
+                            cId = ', cpd$cId[cpd$cName == "cpd:C00048"])
+          resQuery <- dbExecute(dbCon,sql) 
+          sql<- paste0('delete from subsProd
+                      where spType = "s" and
+                            secondary = 0 and
+                            rId = ',react$rId[idx],' and 
+                            cId = ', cpd$cId[cpd$cName == "cpd:C00100"])
+          resQuery <- dbExecute(dbCon,sql) 
+          
+        }
+      }
+    }
+  }
+  # manual correctios of reaction R00351
+  # bases on ec00020 and reaction definition
+  # https://www.kegg.jp/dbget-bin/www_bget?rn:R00351
+  sql<- paste0('delete from subsProd
+                      where rId = ',react$rId[react$rName == "rn:R00351"])
+  resQuery <- dbExecute(dbCon,sql)
+  db <- data.frame(names =  c("cpd:C00010","cpd:C00158",
+                              "cpd:C00036","cpd:C00024"),
+                   type = c("s","s","p","p"),
+                   stringsAsFactors = F) 
+  idx = 1
+  for(idx in 1:4){
+    sql<- paste0('insert into subsProd
+          VALUES (',react$rId[react$rName == "rn:R00351"],',',
+          cpd$cId[cpd$cName == db$names[idx]],',"',
+          db$type[idx],'",',
+          '0)')
+    resQuery <- dbExecute(dbCon,sql) 
+  }
+  
+  
+  errorlist<-do.call(rbind, errorlist) #debug
+  
+  error3<- errorlist[errorlist$subs >2 | 
+                       errorlist$prod >2,]#debug
+  errorlist<-errorlist[errorlist$subs <=2 & 
+                         errorlist$prod <=2,]#debug
+  
+  
+  
+}
+
+setSecondaryCompounds <- function(){
+  # assingn secondary compounds
+  sql<- "update subsProd set secondary = 0;"
+  resQuery <- dbExecute(dbCon,sql)
+  sql<-'update subsProd set secondary = 1
+        where cId in(
+              select cid 
+              from compound 
+              where cName in ("cpd:C00001","cpd:C00002","cpd:C00008","cpd:C00011",
+                              "cpd:C00014","cpd:C00059","cpd:C00066","cpd:C00080","cpd:C00086",
+                              "cpd:C00088","cpd:C00094","cpd:C00288","cpd:C00533","cpd:C01322",
+                              "cpd:C01371","cpd:C01438","cpd:C01528","cpd:C06049","cpd:C09306",
+                              "cpd:C11481","cpd:C14818")
+            );'
+  resQuery <- dbExecute(dbCon,sql)
+  
+}
+
+getEdgesFromEcs <- function(ecs,
+                     pathway){
+  #retrive edges from a pathway graph using
+  # enzime ecs identification
+  
+  pathway<- paste0('"',pathway,'"')
+  ecs<- paste0('"',ecs,'"')
+  ecs <- do.call(paste, c(as.list(ecs), sep = ","))
+  sql <- paste0(
+  'SELECT c1.cName as "from", c2.cName as "to", e.nName as "eName", e.type
+  FROM edges as e INNER JOIN
+  	reaction as r on r.rId = e.nId INNER JOIN
+  	wAllNodes as c1 on c1.cId = e.subs INNER JOIN
+  	wAllNodes as c2 on c2.cId = e.prod
+  WHERE nId in (SELECT mainRId
+  			FROM reactionAssociation
+  			where rId in (SELECT r.rId
+  						from reaction as r inner JOIN
+  							enzReac as er on er.rId = r.rId INNER JOIN
+  							enzime as e on e.eId = er.eId INNER JOIN
+  							reacOnPath as ep on ep.rId = r.rId INNER JOIN
+  							path as p on p.pId = ep.pId
+  						where eName in (',ecs,') AND
+  							pName = ',pathway,'))')
+  sql <- gsub(pattern = '\t',replacement = '',sql)
+  sql <- gsub(pattern = '\n',replacement = '',sql)
+  sql
+  edges <- dbGetQuery(dbCon,sql)
+  
+  edges$from<-sub(pattern = 'cpd:',
+                  replacement = '',
+                  edges$from)
+  edges$to<-sub(pattern = 'cpd:',
+                  replacement = '',
+                  edges$to)
+  edges <- unique(edges) 
+  return(edges)
+}
+
+
+showGraph<-function(ecs = NA, 
+                    pathway,
+                    adj = T){
+  pathway <- "ec00010"
+  
+  if(is.na(ecs)){
+    sql<-paste0('select eName 
+                from enzOnPath as ep inner join
+                path as p on p.pId = ep.pId inner Join
+                enzime as e on e.eId = ep.eId
+                where pName = "',pathway,'"') 
+    ecs<- dbGetQuery(dbCon,sql)
+    ecs <- as.vector(ecs[,1])
+  }
+  # ecs<-c('ec:5.1.3.3','ec:2.7.1.2','ec:2.7.1.147',
+  #        'ec:5.1.3.15','ec:5.3.1.9','ec:2.7.1.199',
+  #        'ec:2.7.1.63','ec::2.7.1.1','ec:3.1.3.10',
+  #        'ec:3.1.3.9','ec:5.4.2.2') 
+  # 
+  # ecs<-c('ec:2.3.1.12','ec:1.2.4.1','ec:1.8.1.4',
+  #        'ec:1.2.7.1','ec:1.2.7.11','ec:2.7.1.40',
+  #        'ec:4.1.1.1','ec:4.2.1.11') 
+  # 
+  
+  edges <- getEdgesFromEcs(ecs = ecs, pathway = pathway )
+  g1 <- graph_from_data_frame(edges, 
+                                   directed=TRUE, 
+                                   vertices=NULL)
+  
+  edgeNames<-E(g1)$eName
+  edge_attr(g1)
+    #print(grapho1, e=TRUE, v=TRUE)
+  edge_attr(grapho1) <- list(color = rep("green", gsize(grapho1)),
+                       curved = rep(F, gsize(grapho1)))
+  edge_attr(grapho1, "label") <- edgeNames 
+  #tkplot(grapho1)
+    g2 <- make_line_graph(g1)
+  
+  vertex_attr(g2, "label")<- edgeNames
+  
+  vNames<- V(g2)$label
+  vNames<- data.frame(nr = seq(1,length(vNames),1), 
+                      label = vNames,
+                      stringsAsFactors = F)
+  
+  #remove duplicity
+  g3<-as_data_frame(grapho2,what = "edges")
+  
+  nrow(g3[g3$from == g3$to,])
+  sum(duplicated(vNames$label))
+  
+  g3<- merge(g3, vNames, 
+             by.x="from",
+             by.y="nr")
+  colnames(g3) <- c("fromO","toO","from")
+  
+  g3<- merge(g3, vNames, 
+             by.x="toO",
+             by.y="nr")
+  g3$toO<-NULL
+  g3$fromO<-NULL
+  colnames(g3) <- c("from","to")
+  
+  g3<-g3[g3$from != g3$to,]
+  
+  g4<-graph_from_data_frame(g3, directed = T)
+  
+  return(g4)
+  #tkplot(g2)
+  #tkplot(g4)
+
+  #plot(edges)
+  
+}
+
+#FIM ----
 # searchValue <- function(table, field, value, pId = NA){
 #   if(is.na(pId)){
 #     sql<-paste0('SELECT * 

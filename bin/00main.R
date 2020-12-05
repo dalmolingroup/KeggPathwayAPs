@@ -23,14 +23,18 @@ rm(list=ls(all=TRUE))
 #Did you change it to your base location?
 dirBase<-"Place here the correct name of your work folder"
 
-dirBase<-"/home/clovis/Dropbox/projetos/Igor/gitAPs"
+dirBase<<-"/home/clovis/Dropbox/projetos/Igor/gitAPs"
 
 #figures
-dirFig<-file.path(dirBase,"figures")
+dirFig<<-file.path(dirBase,"figures")
 #bin dir
-binDir<-file.path(dirBase,"bin")
+binDir<<-file.path(dirBase,"bin")
 #function dir
-funcDir<-file.path(binDir,"functions")
+funcDir<<-file.path(binDir,"functions")
+#database folder and file
+dbDir<<-file.path(dirBase,"data","database")
+dbFile<<-file.path(dbDir,"dictionary.db")
+
 
 #Organisms to process
 #Put here your list of organisms inside the '...' separated by space and "..." as delimiter
@@ -54,12 +58,15 @@ createOrgList(funcDir = funcDir, orgList = orgList)
 #   skip - don't execute this phase and a downloaded data
 #     to execute your own download change skip to F
 
+
 # The ec XML files  are necessary to generate the dictionary of nodes.
 # Skip if using our pre downloaded ec XML files available on github
 downloadKGML(dirBase = dirBase, 
              simProcesses = 1, 
              dataType = "ec", 
              skip = T) 
+
+
 # Download the organims XML files
 # Skip if using our hsa and mmu pre downloaded XML files available on github
 downloadKGML(dirBase = dirBase, 
@@ -68,7 +75,12 @@ downloadKGML(dirBase = dirBase,
              organisms = "some", 
              skip = T) 
 
+#create a new empty database
+# WARNING: all data will be lost
+createDB(skip = T)
+
+# read xml files and load data to database
 generateDataFromKGML(dirBase = dirBase,
                      dataType = 'ec',
-                     skip = F)
+                     skip = T)
 

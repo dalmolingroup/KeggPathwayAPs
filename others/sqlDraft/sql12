@@ -1,0 +1,41 @@
+update subsProd set secondary =0;
+update subsProd set secondary =1
+where cId in(
+select cid 
+from compound 
+where cName in ("cpd:C00001","cpd:C00002","cpd:C00008","cpd:C00011",
+			"cpd:C00014","cpd:C00059","cpd:C00066","cpd:C00080","cpd:C00086",
+			"cpd:C00088","cpd:C00094","cpd:C00288","cpd:C00533","cpd:C01322",
+			"cpd:C01371","cpd:C01438","cpd:C01528","cpd:C06049","cpd:C09306",
+			"cpd:C11481","cpd:C14818")
+			);
+
+
+update subsProd set secondary =0
+where rId in (select rId from reaction where rName = "rn:R00149");
+
+
+			
+Removi
+"cpd:C01326","cpd:C00015","cpd:C00479","cpd:C00020","cpd:C00488","cpd:C00058",
+
+
+incorreto no xml
+    ec00230
+    <reaction id="174" name="rn:R02014" type="irreversible">
+        <substrate id="390" name="cpd:C00002"/>
+        <product id="323" name="cpd:C00131"/>
+    <reaction id="192" name="rn:R00182" type="irreversible">
+        <substrate id="325" name="cpd:C00020"/>
+        <product id="327" name="cpd:C00147"/>
+    ec00910
+    <reaction id="136" name="rn:R00148" type="irreversible">
+        <substrate id="125" name="cpd:C00014"/>
+        <product id="143" name="cpd:C00192"/>
+        
+erro
+    R00149 - colocar uma excessão do atp e adp nesta reação (ADP-forming,carbamate-phosphorylating)
+    
+    
+reactions com problemas
+"rn:R00005","rn:R00078","rn:R00087","rn:R00089","rn:R00111","rn:R00122","rn:R00125","rn:R00126","rn:R00127","rn:R00128","rn:R00143","rn:R00148","rn:R00150","rn:R00184","rn:R00187","rn:R00273","rn:R00294","rn:R00333","rn:R00518","rn:R00521","rn:R00522","rn:R00529","rn:R00529","rn:R00530","rn:R00531","rn:R00540","rn:R00604","rn:R00614","rn:R00774","rn:R00774","rn:R00778","rn:R00791","rn:R00792","rn:R00794","rn:R00796","rn:R00858","rn:R00858","rn:R00859","rn:R00859","rn:R00861","rn:R01408","rn:R01931","rn:R02014","rn:R02017","rn:R02021","rn:R02492","rn:R03071","rn:R03595","rn:R03596","rn:R05185","rn:R05186","rn:R05717","rn:R07157","rn:R07210","rn:R08553","rn:R08678","rn:R09152","rn:R09446","rn:R09466","rn:R09497","rn:R09513","rn:R09799","rn:R09808","rn:R09809","rn:R10092","rn:R10164","rn:R10206","rn:R10388","rn:R10389","rn:R11634","rn:R11713","rn:R12084"

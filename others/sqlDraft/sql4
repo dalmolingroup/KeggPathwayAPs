@@ -1,0 +1,5 @@
+select s.rId , c1.cName, s.spType
+from compound  as c1 INNER JOIN 
+	compOnPath as c2 on c1.cId = c2.cId INNER JOIN
+	subsProd as s on s.cId = c1.cId
+where c2.pId = 2 and s.rId= 66

@@ -3,35 +3,52 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.9.2" last-position="403,563" last-zoom="1" max-obj-count="21"
+<dbmodel pgmodeler-ver="0.9.2" last-position="0,0" last-zoom="0.75" max-obj-count="24"
 	 default-schema="public" default-owner="postgres">
 <database name="APs" encoding="UTF8" lc-collate="pt_BR.UTF-8" lc-ctype="pt_BR.UTF-8" is-template="false" allow-conns="true">
 	<role name="postgres"/>
 	<tablespace name="pg_default"/>
 </database>
 
+<tag name="Nodes">
+	<style id="table-body" colors="#ffffff,#ffffff,#fcfcfc"/>
+	<style id="table-ext-body" colors="#fcfcfc,#fcfcfc,#808080"/>
+	<style id="table-name" colors="#000000"/>
+	<style id="table-schema-name" colors="#000000"/>
+	<style id="table-title" colors="#fcaf3e,#fcaf3e,#f57900"/>
+</tag>
 <schema name="public" layer="0" rect-visible="true" fill-color="#e1e1e1" sql-disabled="true">
 </schema>
 
-<table name="nodes" layer="0" collapse-mode="2" max-obj-count="2">
+<table name="edges" layer="0" collapse-mode="2" max-obj-count="7">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="440" y="320"/>
+	<tag name="Nodes"/>
+	<position x="388" y="134.667"/>
 	<column name="nId" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
-	<column name="nName">
+	<column name="nName" not-null="true">
 		<type name="text" length="0"/>
 	</column>
-	<constraint name="nodes_pk" type="pk-constr" table="public.nodes">
-		<columns names="nId" ref-type="src-columns"/>
-	</constraint>
+	<column name="subs" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="prod" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="type" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="reversible" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
 </table>
 
 <table name="enzime" layer="0" collapse-mode="2" max-obj-count="3">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1400" y="420"/>
+	<position x="1408" y="424"/>
 	<column name="eId" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
@@ -49,7 +66,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="path" layer="0" collapse-mode="2" max-obj-count="6">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="760" y="660"/>
+	<position x="768" y="664"/>
 	<column name="pId" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
@@ -73,7 +90,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="nodesOnPath" layer="0" collapse-mode="2" max-obj-count="4">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="780" y="300"/>
+	<position x="445.333" y="464"/>
 	<column name="nId">
 		<type name="integer" length="0"/>
 	</column>
@@ -91,7 +108,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="reaction" layer="0" collapse-mode="2" max-obj-count="3">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="400" y="900"/>
+	<position x="408" y="904"/>
 	<column name="rId" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
@@ -110,7 +127,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="compound" layer="0" collapse-mode="2" max-obj-count="3">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1040" y="1210"/>
+	<position x="1048" y="1214"/>
 	<column name="cId" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
@@ -129,7 +146,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	<schema name="public"/>
 	<role name="postgres"/>
 	<comment><![CDATA[List of two enzimes related by a compound]]></comment>
-	<position x="1420" y="900"/>
+	<position x="1428" y="904"/>
 	<column name="eId1" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
@@ -145,7 +162,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	<schema name="public"/>
 	<role name="postgres"/>
 	<comment><![CDATA[Map the realtion between enzimes, pathways and nodes]]></comment>
-	<position x="760" y="80"/>
+	<position x="768" y="84"/>
 	<column name="nId" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
@@ -161,7 +178,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	<schema name="public"/>
 	<role name="postgres"/>
 	<comment><![CDATA[List of substrate and products that belongs to an reaction.]]></comment>
-	<position x="400" y="1200"/>
+	<position x="408" y="1204"/>
 	<column name="rId" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
@@ -179,7 +196,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	<schema name="public"/>
 	<role name="postgres"/>
 	<comment><![CDATA[Enzimes can participate of N reactions and reactions can use N enzimes]]></comment>
-	<position x="400" y="660"/>
+	<position x="425.333" y="656"/>
 	<column name="eId" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
@@ -191,7 +208,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="enzOnPath" layer="0" collapse-mode="2" max-obj-count="4">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1120" y="660"/>
+	<position x="1128" y="664"/>
 	<column name="eId" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
@@ -209,7 +226,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="reacOnPath" layer="0" collapse-mode="2" max-obj-count="2">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="760" y="900"/>
+	<position x="768" y="904"/>
 	<column name="rId" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
@@ -221,7 +238,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="compOnPath" layer="0" collapse-mode="2" max-obj-count="4">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1060" y="900"/>
+	<position x="1068" y="904"/>
 	<column name="cId" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
@@ -236,8 +253,39 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	</column>
 </table>
 
+<table name="raectionAssociation" layer="0" collapse-mode="2" max-obj-count="2">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="189.333" y="517.333"/>
+	<column name="rId" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="mainRId" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+</table>
+
+<table name="fakeNode" layer="0" collapse-mode="2" max-obj-count="3">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<tag name="Nodes"/>
+	<position x="117.333" y="148.667"/>
+	<column name="cId" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="cName" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="cDesc">
+		<type name="text" length="0"/>
+	</column>
+	<constraint name="compound_pk2" type="pk-constr" table="public.&quot;fakeNode&quot;">
+		<columns names="cId" ref-type="src-columns"/>
+	</constraint>
+</table>
+
 <constraint name="nxmFk" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.nodes" table="public.&quot;nodesOnPath&quot;">
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.edges" table="public.&quot;nodesOnPath&quot;">
 	<columns names="nId" ref-type="src-columns"/>
 	<columns names="nId" ref-type="dst-columns"/>
 </constraint>
@@ -267,7 +315,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 </constraint>
 
 <constraint name="mnIdfx" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.nodes" table="public.&quot;enzPathNode&quot;">
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.edges" table="public.&quot;enzPathNode&quot;">
 	<columns names="nId" ref-type="src-columns"/>
 	<columns names="nId" ref-type="dst-columns"/>
 </constraint>
@@ -344,9 +392,21 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	<columns names="pId" ref-type="dst-columns"/>
 </constraint>
 
+<constraint name="rAssFk1" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.reaction" table="public.&quot;raectionAssociation&quot;">
+	<columns names="rId" ref-type="src-columns"/>
+	<columns names="rId" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="rAssFk2" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.&quot;raectionAssociation&quot;" table="public.&quot;raectionAssociation&quot;">
+	<columns names="mainRId" ref-type="src-columns"/>
+	<columns names="rId" ref-type="dst-columns"/>
+</constraint>
+
 <relationship name="&quot;rel_nodesOnMap_nodes&quot;" type="relfk" layer="0"
 	 src-table="public.&quot;nodesOnPath&quot;"
-	 dst-table="public.nodes" reference-fk="nxmFk"
+	 dst-table="public.edges" reference-fk="nxmFk"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="&quot;rel_nodesOnMap_map&quot;" type="relfk" layer="0"
@@ -371,7 +431,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 
 <relationship name="&quot;rel_enzPathNode_nodes&quot;" type="relfk" layer="0"
 	 src-table="public.&quot;enzPathNode&quot;"
-	 dst-table="public.nodes" reference-fk="mnIdfx"
+	 dst-table="public.edges" reference-fk="mnIdfx"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="&quot;rel_enzPathNode_path&quot;" type="relfk" layer="0"
@@ -433,5 +493,21 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	 src-table="public.&quot;compOnPath&quot;"
 	 dst-table="public.compound" reference-fk="eidFkp"
 	 src-required="false" dst-required="false"/>
+
+<relationship name="&quot;rel_raectionAssociation_reaction&quot;" type="relfk" layer="0"
+	 src-table="public.&quot;raectionAssociation&quot;"
+	 dst-table="public.reaction" reference-fk="rAssFk1"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_raectionAssociation_raectionAssociation" type="relfk" layer="0"
+	 src-table="public.&quot;raectionAssociation&quot;"
+	 dst-table="public.&quot;raectionAssociation&quot;" reference-fk="rAssFk2"
+	 src-required="false" dst-required="false">
+	<line>
+		<position x="406.188" y="554.883"/>
+	<position x="406.188" y="494.333"/>
+	<position x="318.57" y="494.333"/>
+	</line>
+</relationship>
 
 </dbmodel>

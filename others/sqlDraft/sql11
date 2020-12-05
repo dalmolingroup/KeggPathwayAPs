@@ -1,0 +1,14 @@
+select distinct c.cId, c.cName
+from subsProd as s inner JOIN
+	compound as c on c.cId = s.cId
+where s.rId in (
+	select r.rId
+	from subsProd as s inner join
+		reaction as r on s.rId = r.rId 
+	where s.secondary = 0
+	GROUP by r.rId, s.spType
+	HAVING count(*)>=2) AND
+	cName not like 'dr:%'
+	and s.secondary = 0
+	
+order by c.cName

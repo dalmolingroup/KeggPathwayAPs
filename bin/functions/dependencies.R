@@ -70,6 +70,18 @@ loadDependencies <- function(){
     install.packages("DBI", repos = "http://cran.us.r-project.org")
   library(DBI)
   
+  # tidyr
+  if (!requireNamespace("tidyr", quietly = TRUE))
+    install.packages("tidyr", repos = "http://cran.us.r-project.org")
+  library(tidyr)
+ 
+  # tidyverse
+  if (!requireNamespace("tidyverse", quietly = TRUE))
+    install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+  library(tidyverse) 
+  
+
+  
   #BiocManager::install("Rgraphviz")
   #BiocManager::install("RBGL")
   

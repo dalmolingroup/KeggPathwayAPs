@@ -1,0 +1,3 @@
+select distinct cId
+from subsProd
+where secondary ==1
