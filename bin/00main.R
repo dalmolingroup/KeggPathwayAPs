@@ -88,3 +88,8 @@ createNodesFromEC(dirBase = dirBase, skip = T)
 
 showGraph(pathway = "ec00300", plot = T)
 
+ecs<-c('ec:5.1.3.3','ec:2.7.1.147',
+              'ec:5.1.3.15','ec:5.3.1.9','ec:2.7.1.199',
+              'ec::2.7.1.1','ec:3.1.3.10',
+              'ec:3.1.3.9','ec:5.4.2.2')
+showGraph(pathway = "ec00010", ecs = ecs, plot = T)

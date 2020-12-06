@@ -755,7 +755,7 @@ prepareReacAssos <- function(){
 
 #reactList2<-reactList[1,] #debug
 insertReacList <- function(reactList2){
-  #make the corralation between reactions with same 
+  #make the correlation between reactions with same 
   # subtrate and product
   reactList2<-reactList2[-2]#$dup_count<-NULL
   reactList2<-as.vector((reactList2[!is.na(reactList2)]))
