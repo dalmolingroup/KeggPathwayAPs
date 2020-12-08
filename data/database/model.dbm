@@ -90,7 +90,8 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="nodesOnPath" layer="0" collapse-mode="2" max-obj-count="4">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="445.333" y="464"/>
+	<tag name="Nodes"/>
+	<position x="622.666" y="362.667"/>
 	<column name="nId">
 		<type name="integer" length="0"/>
 	</column>
@@ -162,6 +163,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	<schema name="public"/>
 	<role name="postgres"/>
 	<comment><![CDATA[Map the realtion between enzimes, pathways and nodes]]></comment>
+	<tag name="Nodes"/>
 	<position x="768" y="84"/>
 	<column name="nId" not-null="true">
 		<type name="integer" length="0"/>
@@ -196,7 +198,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	<schema name="public"/>
 	<role name="postgres"/>
 	<comment><![CDATA[Enzimes can participate of N reactions and reactions can use N enzimes]]></comment>
-	<position x="425.333" y="656"/>
+	<position x="426.666" y="598.667"/>
 	<column name="eId" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
@@ -256,7 +258,8 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="raectionAssociation" layer="0" collapse-mode="2" max-obj-count="2">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="189.333" y="517.333"/>
+	<tag name="Nodes"/>
+	<position x="192" y="400"/>
 	<column name="rId" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
@@ -504,9 +507,9 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	 dst-table="public.&quot;raectionAssociation&quot;" reference-fk="rAssFk2"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="406.188" y="554.883"/>
-	<position x="406.188" y="494.333"/>
-	<position x="318.57" y="494.333"/>
+		<position x="408.855" y="437.55"/>
+	<position x="408.855" y="377"/>
+	<position x="321.236" y="377"/>
 	</line>
 </relationship>
 

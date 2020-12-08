@@ -747,6 +747,14 @@ prepareReacAssos <- function(){
   #prepare the table reactionAssociation to receive data
   sql <- "DELETE FROM reactionAssociation"
   resQuery <- dbExecute(dbCon,sql)
+  sql <- "DELETE FROM edges"
+  resQuery <- dbExecute(dbCon,sql)
+  sql <- "DELETE FROM fakeNode"
+  resQuery <- dbExecute(dbCon,sql)
+  sql <- "update fakeEdge set nextId = 100000"
+  resQuery <- dbExecute(dbCon,sql)
+  
+  
   sql <- "INSERT INTO reactionAssociation
           SELECT DISTINCT rId, 0
           FROM reaction;"
@@ -804,14 +812,15 @@ insertEdges <- function(reactList2){
   eName<- dbGetQuery(dbCon,sql)
   
   nName <- eName[1,1]
-  fName <- paste0('f',
-                  substring(
-                    gsub(pattern = '[.]',
-                         replacement = '',
-                         nName),4) )
+  # fName <- paste0('f',
+  #                 substring(
+  #                   gsub(pattern = '[.]',
+  #                        replacement = '',
+  #                        nName),4) )
   if(nrow(eName)>1){
     nName<-paste0(nName,"+")
   }
+  fName <- paste0('f', nName)
   
   reversib <- substr(trim(reactList2[1]),1,1)
   compounds <- gsub(pattern = paste0(' ',reversib,' '),
@@ -1227,7 +1236,8 @@ getEdgesFromEcs <- function(ecs,
 showGraph<-function(ecs = NA, 
                     pathway,
                     adj = T,
-                    plot = T){
+                    plot = T,
+                    removeFake = F){
   
   dbDir<<-file.path(dirBase,"data","database")
   dbFile<<-file.path(dbDir,"dictionary.db")
@@ -1263,11 +1273,47 @@ showGraph<-function(ecs = NA,
   edgeNames<-E(g1)$eName
   edge_attr(g1)
     #print(g1, e=TRUE, v=TRUE)
-  edge_attr(g1) <- list(color = rep("green", gsize(g1)),
+  edge_attr(g1) <- list(color = rep("black", gsize(g1)),
                        curved = rep(F, gsize(g1)))
   edge_attr(g1, "label") <- edgeNames 
   #tkplot(g1)
-    g2 <- make_line_graph(g1)
+
+  attrs<-data.frame(color='cyan',
+                    name = V(g1)$name,
+                    stringsAsFactors = F)
+  attrs$color[grep('fec:',attrs$name)]<-"red"
+  
+  vertex_attr(g1) <- list(name= attrs$name,
+                          color = attrs$color)
+
+  g3<-cleanedLineGraph(g1, removeFake = removeFake)
+  
+  
+  g4<-graph_from_data_frame(g3, directed = T)
+  
+  attrs<-data.frame(color='yellow',
+                    name = V(g4)$name,
+                    stringsAsFactors = F)
+  attrs$color[grep('fec:',attrs$name)]<-"red"
+  vertex_attr(g4) <- list(name= attrs$name,
+                          color = attrs$color)
+  
+  tk1<-tkplot(g1,canvas.width = 1200, canvas.height = 650)
+  
+  tk4<-tkplot(g4,canvas.width = 1200, canvas.height = 650)
+  tk_center(tk4)
+  
+  dbDisconnect(dbCon)  
+  return(g4)
+
+  #plot(edges)
+}
+
+cleanedLineGraph <- function(g1, removeFake = F){
+  
+  
+  edgeNames<-E(g1)$label
+  g2 <- make_line_graph(g1)
   
   vertex_attr(g2, "label")<- edgeNames
   
@@ -1294,18 +1340,37 @@ showGraph<-function(ecs = NA,
   g3$fromO<-NULL
   colnames(g3) <- c("from","to")
   
+  if(removeFake){
+    #remove fake nodes
+    g3$from<-sub(pattern = 'S.+$', 
+                 replacement = '', 
+                 sub(pattern = '^f',replacement = '', 
+                     g3$from))
+    
+    g3$to<-sub(pattern = 'S.+$', 
+               replacement = '', 
+               sub(pattern = '^f',replacement = '', 
+                   g3$to))
+    g3$from<-sub(pattern = 'P.+$', 
+               replacement = '', 
+               sub(pattern = '^f',replacement = '', 
+                   g3$from))
+    g3$to<-sub(pattern = 'P.+$', 
+               replacement = '', 
+               sub(pattern = '^f',replacement = '', 
+                   g3$to))
+  }
+  #remove duplicated
   g3<-g3[g3$from != g3$to,]
+  g3<-g3[!duplicated(g3),]
   
-  g4<-graph_from_data_frame(g3, directed = T)
-#  tkplot(g2)
-  tkplot(g4)
+  return(g3)
   
-  return(g4)
-
-  #plot(edges)
-  dbDisconnect(dbCon)  
 }
 
+removeFakeNodes<-function(){
+  
+}
 #FIM ----
 # searchValue <- function(table, field, value, pId = NA){
 #   if(is.na(pId)){
