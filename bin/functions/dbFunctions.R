@@ -136,6 +136,7 @@ insertEnzReac<-function(ltEnzReac){
                  apply(X = reactionsRef,
                        MARGIN = 1,
                        insertReaction))
+  #reactionsRef <- na.exclude(reactionsRef)
 
   reactionsDef<-merge(reactionsDef,
                        reactionsRef[,1:2], 
@@ -180,7 +181,7 @@ insertEnzReac<-function(ltEnzReac){
 # enzimes$newId<-paste0('e',enzimes$V1)
 # enzimes$V1<-NULL
 
-#enzime<-enzimes[3,] #debug
+#enzime<-enzimes[28,] #debug
 insertEnzime<-function(enzime){
   table <- "enzime"
   fields <- "eName"
@@ -198,7 +199,7 @@ insertEnzime<-function(enzime){
   #enzime exists?
   nextId <- searchValue(table, fields, values)
   if(nextId !=0 ){ # Exists
-    # enzime in pathway exists
+    # enzime exists in pathway?
     fields<-c("eId","pId")
     values<-c(paste0('"',nextId,'"'),
               paste0('"',pId,'"'))
@@ -212,20 +213,22 @@ insertEnzime<-function(enzime){
                     x,',',
                     y,');')
       resQuery <- dbExecute(dbCon,sql) 
-      
-      fields<-c("eId","rId")
-      values<-c(paste0('"',nextId,'"'),
-                paste0('"',rId,'"'))
-      
-      exist<-searchValue("enzReac",fields, values)
-      if( exist == 0){
-        sql<- paste0('INSERT INTO enzReac
-                      VALUES (',
-                     nextId,',',
-                     rId,');')
-        resQuery <- dbExecute(dbCon,sql) 
-      }
     }
+    
+    # enzime and reaction exists in pathway?
+    fields<-c("eId","rId")
+    values<-c(paste0('"',nextId,'"'),
+              paste0('"',rId,'"'))
+    
+    exist<-searchValue("enzReac",fields, values)
+    if( exist == 0){
+      sql<- paste0('INSERT INTO enzReac
+                      VALUES (',
+                   nextId,',',
+                   rId,');')
+      resQuery <- dbExecute(dbCon,sql) 
+    }
+
     return(data.frame(newId=paste0('e',nextId)
                       ,oldId= oldId,
                       eName = eName, 
@@ -274,13 +277,36 @@ insertEnzime<-function(enzime){
     
 }
 
-#reaction<-as.vector(reactionsRef[59,]) #debug
+#reaction<-as.vector(reactionsRef[29,]) #debug
 insertReaction<-function(reaction){
+  blFile <- file.path(dbDir,"blacklist")
+  blackList<-read.csv(file = blFile,
+                      header = T, 
+                      stringsAsFactors =F)
+    
+    # c("rn:R02189","rn:R00150","rn:R00200","rn:R00212",
+    #             "rn:R00214","rn:R00216","rn:R00228",
+    #             "rn:R00229","rn:R00237","rn:R00238",
+    #             "rn:R00243","rn:R00258","rn:R00262",
+    #             "rn:R00264","rn:R00286","rn:R00289",
+    #             "rn:R00341","rn:R00342","rn:R00343",
+    #             "rn:R00352","rn:R00355","rn:R00372",
+    #             "rn:R00396","rn:R00405","rn:R00431",
+    #             "rn:R00462","rn:R00472","rn:R00473",
+    #             "rn:R00529","rn:R00565","rn:R00586",
+    #             "rn:R00588","rn:R00653","rn:R00672",
+    #             "rn:R00707","rn:R00708","rn:R00710",
+    #             "rn:R00715","rn:R00726","rn:R00734","rn:R00737","rn:R00742","rn:R00774","rn:R00782","rn:R00833","rn:R00858","rn:R00859","rn:R00883","rn:R00885","rn:R00889","rn:R00905","rn:R00921","rn:R00945","rn:R00946","rn:R00948","rn:R00954","rn:R00956","rn:R00994","rn:R01015","rn:R01049","rn:R01056","rn:R01061","rn:R01063","rn:R01087","rn:R01150","rn:R01151","rn:R01155","rn:R01177","rn:R01183","rn:R01196","rn:R01197","rn:R01214","rn:R01220","rn:R01280","rn:R01325","rn:R01366","rn:R01370","rn:R01371","rn:R01373","rn:R01381","rn:R01388","rn:R01392","rn:R01431","rn:R01434","rn:R01476","rn:R01512","rn:R01518","rn:R01529","rn:R01611","rn:R01641","rn:R01655","rn:R01669","rn:R01717","rn:R01728","rn:R01777","rn:R01786","rn:R01788","rn:R01836","rn:R01838","rn:R01900","rn:R01975","rn:R01976","rn:R01977","rn:R02000","rn:R02101","rn:R02164","rn:R02199","rn:R02219","rn:R02269","rn:R02340","rn:R02484","rn:R02536","rn:R02661","rn:R02695","rn:R02722","rn:R02729","rn:R02765","rn:R02963","rn:R03026","rn:R03027","rn:R03045","rn:R03046","rn:R03158","rn:R03172","rn:R03244","rn:R03264","rn:R03337","rn:R03339","rn:R03397","rn:R03399","rn:R03778","rn:R03858","rn:R03896","rn:R03898","rn:R03984","rn:R03991","rn:R04095","rn:R04125","rn:R04325","rn:R04560","rn:R04742","rn:R04747","rn:R05076","rn:R05399","rn:R05636","rn:R05692","rn:R05850","rn:R06613","rn:R07055","rn:R07618","rn:R07672","rn:R07675","rn:R07676","rn:R09097","rn:R10412","rn:R10782")
+  
   table <- "reaction"
   fields <- c("rName","rReversible")
   rName <- reaction["rName"]
   rType <- reaction["rType"]
-  rType <- ifelse(rType == 'reversible', 1,0)
+  if(rName %in% blackList$Reaction){
+    rType <- blackList$Reversible[blackList$Reaction == rName]
+  }else{
+    rType <- ifelse(rType == 'reversible', 1,0)
+  }
   oldId<-reaction["rId"]
   pId <- reaction["pId"]
   
@@ -761,6 +787,7 @@ prepareReacAssos <- function(){
   resQuery <- dbExecute(dbCon,sql)
 }
 
+#reactList2<-reactList[reactList$rId1=="  97",]
 #reactList2<-reactList[1,] #debug
 insertReacList <- function(reactList2){
   #make the correlation between reactions with same 
@@ -768,7 +795,7 @@ insertReacList <- function(reactList2){
   reactList2<-reactList2[-2]#$dup_count<-NULL
   reactList2<-as.vector((reactList2[!is.na(reactList2)]))
   #cat(reactList2,'\n')
-  idx<-3
+  idx<-2
   #if(length(reactList2) > 2){
     for(idx in 2:length(reactList2)){
       sql <- paste0("select * 
@@ -787,8 +814,9 @@ insertReacList <- function(reactList2){
   #}
 }
 
-# reactList2<-reactList[9,] #debug
+# reactList2<-reactList[2,] #debug
 # insertEdges(reactList2)
+#reactList2<-reactList[reactList$cpd==" I s10 I s30 I p54 I p64",]
 insertEdges <- function(reactList2){
   cat("Inserting edges [",counter,"of",total,"]\n")
   counter<<-counter+1
@@ -810,7 +838,9 @@ insertEdges <- function(reactList2){
                 order by eName')
 
   eName<- dbGetQuery(dbCon,sql)
-  
+  if(nrow(eName) == 0 ){
+    cat(file = logFile,'error in ',nId, reactList2,'\n',append = T)
+  }
   nName <- eName[1,1]
   # fName <- paste0('f',
   #                 substring(
@@ -1033,6 +1063,57 @@ insertEdges <- function(reactList2){
 keggErrorsFix <- function(){
   #correct some erros found on KEGG xml where
   # some reactions have inconsistences from one path to another
+  
+  #correct reactions that have different reversibility assingn
+  # will be consider correct all reversible reactions
+  # irreversible reactions will be deleted
+  # sql<-'SELECT * 
+  #       FROM reaction
+  #       WHERE rName in (
+  #       		SELECT rName
+  #       		FROM reaction
+  #       		GROUP by rName
+  #       		HAVING count(*) > 1)
+  #       ORDER by rName'
+  # react<-dbGetQuery(dbCon,sql)
+  # tmp<-react[react$rReversible == 0,c("rId","rName")]
+  # colnames(tmp)[1]<-"oldId"
+  # react<-react[react$rReversible == 1,]
+  # react<- merge(react,tmp, by="rName")
+  # #correct the rId in every table where its appears
+  # tables <- c("subsProd","reaction")
+  # idx=1
+  # for(idx in 1:nrow(react)){
+  #   newId <- react$rId[idx]
+  #   oldId <- react$oldId[idx]
+  #   #update tables
+  #   sql <- paste0('UPDATE enzReac',
+  #                 ' set rId = ', newId,
+  #                 ' where rid = ', oldId,';')
+  #   resQuery <- dbExecute(dbCon,sql)
+  #   sql <- paste0('UPDATE reacOnPath',
+  #                 ' set rId = ', newId,
+  #                 ' where rid = ', oldId,';')
+  #   resQuery <- dbExecute(dbCon,sql)
+  #   sql <- paste0('UPDATE reactionAssociation',
+  #                 ' set rId = ', newId,
+  #                 ' where rid = ', oldId,';')
+  #   resQuery <- dbExecute(dbCon,sql)
+  #   sql <- paste0('UPDATE reactionAssociation',
+  #                 ' set mainRId = ', newId,
+  #                 ' where mainRId = ', oldId,';')
+  #   resQuery <- dbExecute(dbCon,sql)
+  #   #delete from tables
+  #   for(table in tables){
+  #     sql <- paste0('DELETE FROM ',
+  #                   table,
+  #                   ' where rid = ', oldId,';')
+  #     resQuery <- dbExecute(dbCon,sql)
+  #   }
+  #   
+  # }
+  
+  #Correct substract product duplicity and inconsistences
   sql<-'select distinct rId, rName
         from reaction'
   react<-dbGetQuery(dbCon,sql)
@@ -1187,11 +1268,12 @@ setSecondaryCompounds <- function(){
                               "cpd:C00014","cpd:C00059","cpd:C00066","cpd:C00080","cpd:C00086",
                               "cpd:C00088","cpd:C00094","cpd:C00288","cpd:C00533","cpd:C01322",
                               "cpd:C01371","cpd:C01438","cpd:C01528","cpd:C06049","cpd:C09306",
-                              "cpd:C11481","cpd:C14818")
+                              "cpd:C11481","cpd:C14818","cpd:C00009")
             );'
   resQuery <- dbExecute(dbCon,sql)
   
 }
+
 
 getEdgesFromEcs <- function(ecs,
                      pathway){
@@ -1232,6 +1314,41 @@ getEdgesFromEcs <- function(ecs,
   return(edges)
 }
 
+getEdgesFromPath <- function(pathway){
+  #retrive edges from a pathway graph using
+  # enzime ecs identification
+  
+  pathway<- paste0('"',pathway,'"')
+  # ecs<- paste0('"',ecs,'"')
+  # ecs <- do.call(paste, c(as.list(ecs), sep = ","))
+  sql <- paste0(
+    'SELECT c1.cName as "from", c2.cName as "to", e.nName as "eName", e.type  
+      FROM edges as e INNER JOIN  
+      	reaction as r on r.rId = e.nId INNER JOIN  
+      	wAllNodes as c1 on c1.cId = e.subs INNER JOIN  
+      	wAllNodes as c2 on c2.cId = e.prod  
+      WHERE nId in (
+      	SELECT mainRId  
+      	FROM reactionAssociation  
+      	where rId in (
+      		SELECT r.rId  from reaction as r inner JOIN
+      		reacOnPath as ep on ep.rId = r.rId INNER JOIN  
+      		path as p on p.pId = ep.pId  
+      		where pName = ',pathway,'))')
+  sql <- gsub(pattern = '\t',replacement = '',sql)
+  sql <- gsub(pattern = '\n',replacement = '',sql)
+  sql
+  edges <- dbGetQuery(dbCon,sql)
+  
+  edges$from<-sub(pattern = 'cpd:',
+                  replacement = '',
+                  edges$from)
+  edges$to<-sub(pattern = 'cpd:',
+                replacement = '',
+                edges$to)
+  edges <- unique(edges) 
+  return(edges)
+}
 
 showGraph<-function(ecs = NA, 
                     pathway,
@@ -1247,45 +1364,70 @@ showGraph<-function(ecs = NA,
   #pathway <- "ec00010"
   
   if(is.na(ecs)){
-    sql<-paste0('select eName 
-                from enzOnPath as ep inner join
-                path as p on p.pId = ep.pId inner Join
-                enzime as e on e.eId = ep.eId
-                where pName = "',pathway,'"') 
-    ecs<- dbGetQuery(dbCon,sql)
-    ecs <- as.vector(ecs[,1])
+    edges<-getEdgesFromPath(pathway = pathway)
+  }else{
+    # ecs<-c('ec:5.1.3.3','ec:2.7.1.2','ec:2.7.1.147',
+    #        'ec:5.1.3.15','ec:5.3.1.9','ec:2.7.1.199',
+    #        'ec:2.7.1.63','ec::2.7.1.1','ec:3.1.3.10',
+    #        'ec:3.1.3.9','ec:5.4.2.2') 
+    # 
+    # ecs<-c('ec:2.3.1.12','ec:1.2.4.1','ec:1.8.1.4',
+    #        'ec:1.2.7.1','ec:1.2.7.11','ec:2.7.1.40',
+    #        'ec:4.1.1.1','ec:4.2.1.11') 
+    # 
+    
+    edges <- getEdgesFromEcs(ecs = ecs, pathway = pathway )
   }
-  # ecs<-c('ec:5.1.3.3','ec:2.7.1.2','ec:2.7.1.147',
-  #        'ec:5.1.3.15','ec:5.3.1.9','ec:2.7.1.199',
-  #        'ec:2.7.1.63','ec::2.7.1.1','ec:3.1.3.10',
-  #        'ec:3.1.3.9','ec:5.4.2.2') 
-  # 
-  # ecs<-c('ec:2.3.1.12','ec:1.2.4.1','ec:1.8.1.4',
-  #        'ec:1.2.7.1','ec:1.2.7.11','ec:2.7.1.40',
-  #        'ec:4.1.1.1','ec:4.2.1.11') 
-  # 
+  sql<-paste0('select cName, x, y
+              FROM compOnPath as cp INNER JOIN
+              	compound as c on c.cId = cp.cId inner JOIN
+              	path as p on p.pid = cp.pId
+              WHERE p.pName = "',pathway,'"') 
+  cpd<- dbGetQuery(dbCon,sql)
+  cpd$cName<-sub(pattern = 'cpd:',replacement = '',
+                 cpd$cName)
+  cpd<-cpd[!duplicated(cpd$cName),]
   
-  edges <- getEdgesFromEcs(ecs = ecs, pathway = pathway )
+  
   g1 <- graph_from_data_frame(edges, 
                                    directed=TRUE, 
                                    vertices=NULL)
+
+  tmp<-data.frame(idx = seq(1,length(V(g1))),
+                  cName = V(g1)$name,
+                  stringsAsFactors = F)
+                  
+  cpd<-merge(tmp,cpd,by="cName",all.x = T)
+  cpd<-cpd[order(cpd$idx),]
+  cpd$x[is.na(cpd$x)]<-600
+  cpd$y[is.na(cpd$y)]<-300
+  
+  cpd$x <- (cpd$x-min(cpd$x))/
+            (max(cpd$x)-min(cpd$x))*1000 + 25
+  cpd$y <- (cpd$y-min(cpd$y))/
+    (max(cpd$y)-min(cpd$y))*500 + 25
+  coords<-matrix(c(cpd$x,cpd$y),ncol = 2)
   
   edgeNames<-E(g1)$eName
   edge_attr(g1)
     #print(g1, e=TRUE, v=TRUE)
   edge_attr(g1) <- list(color = rep("black", gsize(g1)),
-                       curved = rep(F, gsize(g1)))
+                       curved = rep(T, gsize(g1)))
   edge_attr(g1, "label") <- edgeNames 
   #tkplot(g1)
 
   attrs<-data.frame(color='cyan',
                     name = V(g1)$name,
                     stringsAsFactors = F)
-  attrs$color[grep('fec:',attrs$name)]<-"red"
+  attrs$color[grep('^f',attrs$name)]<-"red"
   
   vertex_attr(g1) <- list(name= attrs$name,
                           color = attrs$color)
-
+  tk1<-tkplot(g1,canvas.width = 1200, 
+              canvas.height = 650)
+  tk_set_coords(tk1,coords)
+  tk_center(tk1)
+  
   g3<-cleanedLineGraph(g1, removeFake = removeFake)
   
   
@@ -1297,10 +1439,35 @@ showGraph<-function(ecs = NA,
   attrs$color[grep('fec:',attrs$name)]<-"red"
   vertex_attr(g4) <- list(name= attrs$name,
                           color = attrs$color)
+  sql<-paste0('select eName, x, y
+              FROM enzOnPath as ep INNER JOIN
+                enzime as e on e.eId = ep.eId inner JOIN
+                path as p on p.pid = ep.pId
+              WHERE p.pName ="',pathway,'"') 
+  cpd<- dbGetQuery(dbCon,sql)
+  # cpd$eName<-sub(pattern = 'cpd:',replacement = '',
+  #                cpd$cName)
+  # cpd<-cpd[!duplicated(cpd$eName),]
+     
+  tmp<-data.frame(idx = seq(1,length(V(g4))),
+                  eName = V(g4)$name,
+                  stringsAsFactors = F)
+  tmp$eName<-sub(pattern = '[+]',replacement = '',
+                                 tmp$eName)
+  cpd<-merge(tmp,cpd,by="eName",all.x = T)
+  cpd<-cpd[order(cpd$idx),]
+  cpd$x[is.na(cpd$x)]<-600
+  cpd$y[is.na(cpd$y)]<-300
   
-  tk1<-tkplot(g1,canvas.width = 1200, canvas.height = 650)
+  cpd$x <- (cpd$x-min(cpd$x))/
+    (max(cpd$x)-min(cpd$x))*1000 + 25
+  cpd$y <- (cpd$y-min(cpd$y))/
+    (max(cpd$y)-min(cpd$y))*500 + 25
+  coords<-matrix(c(cpd$x,cpd$y),ncol = 2)
   
-  tk4<-tkplot(g4,canvas.width = 1200, canvas.height = 650)
+  tk4<-tkplot(g4,canvas.width = 1200, 
+              canvas.height = 650)
+  tk_set_coords(tk4,coords)
   tk_center(tk4)
   
   dbDisconnect(dbCon)  

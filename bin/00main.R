@@ -86,9 +86,9 @@ generateDataFromKGML(dirBase = dirBase,
 
 createNodesFromEC(dirBase = dirBase, skip = T)
 
-showGraph(pathway = "ec00010", removeFake = F)
+showGraph(pathway = "ec00010", removeFake = T)
 
-ecs<-c('ec:5.1.3.3','ec:2.7.1.147','ec::2.7.1.2',
+ecs<-c('ec:5.1.3.3','ec:2.7.1.147','ec:2.7.1.2','ec:2.7.1.63',
               'ec:5.1.3.15','ec:5.3.1.9','ec:2.7.1.199',
               'ec::2.7.1.1','ec:3.1.3.10',
               'ec:3.1.3.9','ec:5.4.2.2')

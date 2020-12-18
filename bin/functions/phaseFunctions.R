@@ -128,7 +128,7 @@ generateDataFromKGML <- function(dirBase,
     # IMPORTANTE: Aqui estou reduzindo a lista das pathways para não ficar tão pesado!
     #*********************************************************************************#
     #kgml_list = c('ec00010.xml', 'ec00520.xml') #debug
-    #kgml_list = c('ec00121.xml') #debug
+    #kgml_list = c('ec00010.xml') #debug
     
     kgml_index <- 1
     
