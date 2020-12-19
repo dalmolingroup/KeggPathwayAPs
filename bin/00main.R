@@ -33,6 +33,7 @@ binDir<<-file.path(dirBase,"bin")
 funcDir<<-file.path(binDir,"functions")
 #database folder and file
 dbDir<<-file.path(dirBase,"data","database")
+dbTemplate <- file.path(dbDir,"APs.sql")
 dbFile<<-file.path(dbDir,"dictionary.db")
 
 
@@ -77,14 +78,16 @@ downloadKGML(dirBase = dirBase,
 
 #create a new empty database
 # WARNING: all data will be lost
-createDB(skip = T)
+createDB(dbTemplate = dbTemplate,
+         dbFile = dbFile,
+         skip = F)
 
 # read xml files and load data to database
 generateDataFromKGML(dirBase = dirBase,
                      dataType = 'ec',
-                     skip = T)
+                     skip = F)
 
-createNodesFromEC(dirBase = dirBase, skip = T)
+createNodesFromEC(dirBase = dirBase, skip = F)
 
 showGraph(pathway = "ec00010", removeFake = T)
 
