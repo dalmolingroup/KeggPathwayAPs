@@ -644,7 +644,7 @@ createNodes <- function(){
   #   where rId not in ",badReactions)
 
   sql <- paste0('select r.rId,
-                        case when r.rReversible = 0 then "R" ELSE "I" END ||
+                        case when r.rReversible = 1 then "R" ELSE "I" END ||
                         " " || sp.spType || sp.cId as cId
                 from subsProd as sp INNER JOIN
                     reaction as r on r.rId = sp.rId 
@@ -816,7 +816,7 @@ insertReacList <- function(reactList2){
 
 # reactList2<-reactList[2,] #debug
 # insertEdges(reactList2)
-#reactList2<-reactList[reactList$cpd==" I s10 I s30 I p54 I p64",]
+#reactList2<-reactList[reactList$cpd==" I s38 I s321 I p19 I p28",]
 insertEdges <- function(reactList2){
   cat("Inserting edges [",counter,"of",total,"]\n")
   counter<<-counter+1
@@ -842,6 +842,14 @@ insertEdges <- function(reactList2){
     cat(file = logFile,'error in ',nId, reactList2,'\n',append = T)
   }
   nName <- eName[1,1]
+  
+  sql <- paste0('SELECT rName
+                FROM reaction
+                WHERE rId =', nId,'
+                order by rName')
+  
+  rName<- dbGetQuery(dbCon,sql)
+  rName <- rName[1,1]
   # fName <- paste0('f',
   #                 substring(
   #                   gsub(pattern = '[.]',
@@ -882,6 +890,7 @@ insertEdges <- function(reactList2){
       fakeNameS <- paste0(fName,'S',idx2)
       edgeList[[idxEdge]]<-data.frame(nId = nId,
                                       nName = fakeNameS,
+                                      rName = rName,
                                       subs=as.numeric(subs[idx2]),
                                       prod=fakeIdS,
                                       type = "F",
@@ -891,6 +900,7 @@ insertEdges <- function(reactList2){
       if(isRevers == 1){
         edgeList[[idxEdge]]<-data.frame(nId = nId,
                                         nName = fakeNameS,
+                                        rName = rName,
                                         subs=fakeIdS,
                                         prod=as.numeric(subs[idx2]),
                                         type = "F",
@@ -906,6 +916,7 @@ insertEdges <- function(reactList2){
       fakeNameP <- paste0(fName,'P',idx2)
       edgeList[[idxEdge]]<-data.frame(nId = nId,
                                       nName = fakeNameP,
+                                      rName = rName,
                                       subs=fakeIdP,
                                       prod=as.numeric(prod[idx2]),
                                       type = "F",
@@ -916,6 +927,7 @@ insertEdges <- function(reactList2){
       if(isRevers == 1){
         edgeList[[idxEdge]]<-data.frame(nId = nId,
                                         nName = fakeNameP,
+                                        rName = rName,
                                         subs= as.numeric(prod[idx2]),
                                         prod= fakeIdP,
                                         type = "F",
@@ -930,6 +942,7 @@ insertEdges <- function(reactList2){
   if(fakeIdS !=0 & fakeIdP !=0){
     edgeList[[idxEdge]]<-data.frame(nId = nId,
                                     nName = fakeNameP,
+                                    rName = rName,
                                     subs=fakeIdS,
                                     prod=fakeIdP,
                                     type = "R",
@@ -940,6 +953,7 @@ insertEdges <- function(reactList2){
     if(isRevers == 1){
       edgeList[[idxEdge]]<-data.frame(nId = nId,
                                       nName = fakeNameP,
+                                      rName = rName,
                                       subs= fakeIdP,
                                       prod= fakeIdS,
                                       type = "R",
@@ -952,6 +966,7 @@ insertEdges <- function(reactList2){
   if(fakeIdS !=0 & fakeIdP ==0){
     edgeList[[idxEdge]]<-data.frame(nId = nId,
                                     nName = nName,
+                                    rName = rName,
                                     subs=fakeIdS,
                                     prod= prod[1],
                                     type = "R",
@@ -962,6 +977,7 @@ insertEdges <- function(reactList2){
     if(isRevers == 1){
       edgeList[[idxEdge]]<-data.frame(nId = nId,
                                       nName = nName,
+                                      rName = rName,
                                       subs= prod[1],
                                       prod= fakeIdS,
                                       type = "R",
@@ -974,6 +990,7 @@ insertEdges <- function(reactList2){
   if(fakeIdS ==0 & fakeIdP !=0){
     edgeList[[idxEdge]]<-data.frame(nId = nId,
                                     nName = nName,
+                                    rName = rName,
                                     subs = subs[1],
                                     prod=fakeIdP,
                                     type = "R",
@@ -984,6 +1001,7 @@ insertEdges <- function(reactList2){
     if(isRevers == 1){
       edgeList[[idxEdge]]<-data.frame(nId = nId,
                                       nName = nName,
+                                      rName = rName,
                                       subs= fakeIdP,
                                       prod=  subs[1],
                                       type = "R",
@@ -996,6 +1014,7 @@ insertEdges <- function(reactList2){
   if(fakeIdS ==0 & fakeIdP ==0){
     edgeList[[idxEdge]]<-data.frame(nId = nId,
                                     nName = nName,
+                                    rName = rName,
                                     subs=subs[1],
                                     prod=prod[1],
                                     type = "R",
@@ -1006,6 +1025,7 @@ insertEdges <- function(reactList2){
     if(isRevers == 1){
       edgeList[[idxEdge]]<-data.frame(nId = nId,
                                       nName = nName,
+                                      rName = rName,
                                       subs= prod[1],
                                       prod= subs[1],
                                       type = "R",
@@ -1044,7 +1064,8 @@ insertEdges <- function(reactList2){
                 'INSERT INTO edges
                   VALUES (',
                   x["nId"],',"',
-                  x["nName"], '",',
+                  x["nName"], '","',
+                  x["rName"], '",',
                   x["subs"],',',
                   x["prod"],',"',
                   x["type"],'",',

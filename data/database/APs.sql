@@ -30,6 +30,7 @@ INSERT INTO fakeEdge VALUES (100000);
 CREATE TABLE edges (
 	"nId" integer NOT NULL,
 	"nName" text NOT NULL,
+	"rName" text NOT NULL,
 	subs integer NOT NULL,
 	prod integer NOT NULL,
 	type text NOT NULL,

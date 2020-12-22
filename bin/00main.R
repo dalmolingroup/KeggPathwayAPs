@@ -85,11 +85,11 @@ createDB(dbTemplate = dbTemplate,
 # read xml files and load data to database
 generateDataFromKGML(dirBase = dirBase,
                      dataType = 'ec',
-                     skip = F)
+                     skip = T)
 
-createNodesFromEC(dirBase = dirBase, skip = F)
+createNodesFromEC(dirBase = dirBase, skip = T)
 
-showGraph(pathway = "ec00010", removeFake = T)
+showGraph(pathway = "ec00020", removeFake = T)
 
 ecs<-c('ec:5.1.3.3','ec:2.7.1.147','ec:2.7.1.2','ec:2.7.1.63',
               'ec:5.1.3.15','ec:5.3.1.9','ec:2.7.1.199',
