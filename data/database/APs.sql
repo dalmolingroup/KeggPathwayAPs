@@ -202,7 +202,7 @@ CREATE TABLE nodeMetric (
 	"hubScore" real NOT NULL,
 	CONSTRAINT map_pk PRIMARY KEY ("nId","pId"),
 	FOREIGN KEY ("nId")
-    REFERENCES edges ("nId"),
+    REFERENCES nodeAlias ("nId"),
     FOREIGN KEY ("pId")
     REFERENCES path ("pId")
 );
