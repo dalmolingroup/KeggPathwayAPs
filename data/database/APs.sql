@@ -3,7 +3,8 @@ DROP VIEW IF EXISTS fCompound ;
 drop VIEW IF EXISTS wNamesSubsProd;
 DROP VIEW IF EXISTS wAllNodes;
 
-
+DROP TABLE IF EXISTS nodeMetric;
+DROP TABLE IF EXISTS nodeAlias;
 DROP TABLE IF EXISTS "reactionAssociation";
 DROP TABLE IF EXISTS "nodesOnPath" ;
 DROP TABLE IF EXISTS interaction ;
@@ -175,6 +176,38 @@ CREATE TABLE "reactionAssociation" (
     REFERENCES reaction ("rId")
 );
 
+
+CREATE TABLE "nodeAlias" (
+	"nId" integer NOT NULL,
+	"childId" integer NOT NULL,
+	type text NOT NULL
+);
+
+CREATE TABLE nodeMetric (
+	"nId" integer NOT NULL,
+	"pId" integer NOT NULL,
+	"isAP" integer NOT NULL,
+	"connectivity" integer NOT NULL,
+	"triangles" integer NOT NULL,
+	"community" integer NOT NULL,
+	"eccentricity" integer NOT NULL,
+	"radius" integer NOT NULL,
+	"diameter" integer NOT NULL,
+	"degree" integer NOT NULL,
+	"betweenness" real NOT NULL,
+	"clusteringCoef" real NOT NULL,
+	"closenessCoef" real NOT NULL,
+	"eigenvScore" real NOT NULL,
+	"authScore" real NOT NULL,
+	"hubScore" real NOT NULL,
+	CONSTRAINT map_pk PRIMARY KEY ("nId","pId"),
+	FOREIGN KEY ("nId")
+    REFERENCES edges ("nId"),
+    FOREIGN KEY ("pId")
+    REFERENCES path ("pId")
+);
+
+
 PRAGMA foreign_keys=OFF;
 INSERT INTO reactionAssociation
 VALUES (0,0);
@@ -214,3 +247,4 @@ create VIEW wAllNodes as
 select * from compound
 UNION
 select * from fakeNode;
+

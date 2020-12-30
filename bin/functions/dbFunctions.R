@@ -343,7 +343,7 @@ insertReaction<-function(reaction){
   #take the next ID from database
   nextId<-getNextId(table)
   
-  #new enzimeID
+  #new reaction ID
   sql<- paste0('INSERT INTO ', 
                table,
                ' VALUES (',
@@ -642,6 +642,7 @@ createNodes <- function(){
   # sql <- paste0("select *
   #   from subsProdNames
   #   where rId not in ",badReactions)
+  #select all reactions except the bad ones
 
   sql <- paste0('select r.rId,
                         case when r.rReversible = 1 then "R" ELSE "I" END ||
@@ -773,6 +774,8 @@ prepareReacAssos <- function(){
   #prepare the table reactionAssociation to receive data
   sql <- "DELETE FROM reactionAssociation"
   resQuery <- dbExecute(dbCon,sql)
+  sql <- "DELETE FROM nodeAlias"
+  resQuery <- dbExecute(dbCon,sql)
   sql <- "DELETE FROM edges"
   resQuery <- dbExecute(dbCon,sql)
   sql <- "DELETE FROM fakeNode"
@@ -814,9 +817,14 @@ insertReacList <- function(reactList2){
   #}
 }
 
-# reactList2<-reactList[2,] #debug
+insertEnzymeAssos<-function(){
+  #create names and associations between enzymes
+  
+}
+
+# reactList2<-reactList[4164,] #debug
 # insertEdges(reactList2)
-#reactList2<-reactList[reactList$cpd==" I s38 I s321 I p19 I p28",]
+#reactList2<-reactList[reactList$cpd==" I s1021 I s1022 I p835",]
 insertEdges <- function(reactList2){
   cat("Inserting edges [",counter,"of",total,"]\n")
   counter<<-counter+1
@@ -824,39 +832,92 @@ insertEdges <- function(reactList2){
   reactList2<-as.vector((reactList2[!is.na(reactList2)]))
   #cat(reactList2,'\n')
   idx<-3
+  #nId is the reaction database identifier
   nId<-as.numeric(trim(reactList2[2]))
+  #list all reactions
+  reacts<-''
+  if(length(reactList2)>2){
+    for (idx in 2:(length(reactList2)-1)) {
+      reacts<-paste0(reacts,as.numeric(trim(reactList2[idx])),',')
+    }
+    reacts<-paste0(reacts,as.numeric(trim(reactList2[idx+1])))
+  }else{
+    reacts<-paste0(reacts,as.numeric(trim(reactList2[2])))
+  }
+    
   # sql <- paste0('select rName
   #               from reaction
   #               where rId = ',nId)
   # 
   # rName<- substring(dbGetQuery(dbCon,sql)[1,1],4)
-
-  sql <- paste0('SELECT eName
+  #get enzime names
+  sql <- paste0('SELECT e.eId, e.eName
                 FROM enzime as e INNER JOIN
                     enzReac as er on er.eId = e.eId
-                WHERE er.rId =', nId,'
+                WHERE er.rId in (', reacts,')
                 order by eName')
 
-  eName<- dbGetQuery(dbCon,sql)
-  if(nrow(eName) == 0 ){
+  eNames<- dbGetQuery(dbCon,sql)
+  if(nrow(eNames) == 0 ){
     cat(file = logFile,'error in ',nId, reactList2,'\n',append = T)
   }
-  nName <- eName[1,1]
+  nName <- eNames[1,2]
   
-  sql <- paste0('SELECT rName
-                FROM reaction
-                WHERE rId =', nId,'
-                order by rName')
+  sql <- paste0('SELECT DISTINCT rId, rName
+                  FROM 
+                      (SELECT r.rId, r.rName
+                      FROM reaction as r
+                      WHERE rId in (', reacts,')
+                      UNION
+                      SELECT r.rId, r.rName
+                      FROM reaction as r INNER JOIN
+                          reactionAssociation as ra on ra.rId = r.rId 
+                      WHERE ra.mainRId in (', reacts,'))
+                  order by rName')
   
-  rName<- dbGetQuery(dbCon,sql)
-  rName <- rName[1,1]
+  rNames<- dbGetQuery(dbCon,sql)
+  rName <- rNames[1,2]
   # fName <- paste0('f',
   #                 substring(
   #                   gsub(pattern = '[.]',
   #                        replacement = '',
   #                        nName),4) )
-  if(nrow(eName)>1){
+  # set new edge name 
+  if(nrow(eNames)>1){
     nName<-paste0(nName,"+")
+  }
+  repName<-checkNewName(name = nName,
+                       type = 'n')
+  if(repName > 0){
+    nName <- paste0(nName,"_",repName)
+  }
+
+  # set new reaction name 
+  if(nrow(rNames)>1){
+    rName<-paste0(rName,"+")
+  }
+  repName<-checkNewName(name = rName,
+                        type = 'r')
+  if(repName > 0){
+    rName <- paste0(rName,"_",repName)
+  }
+  #insert aliases
+  idx=1
+  for(idx in 1:nrow(eNames)){
+    sql<-paste0('INSERT INTO nodeAlias
+                VALUES (',
+                nId,',',
+                eNames[idx,1],
+                ',"e")')
+    resQuery <- dbExecute(dbCon,sql)
+  }
+  for(idx in 1:nrow(rNames)){
+    sql<-paste0('INSERT INTO nodeAlias
+                VALUES (',
+                nId,',',
+                rNames[idx,1],
+                ',"r")')
+    resQuery <- dbExecute(dbCon,sql)
   }
   fName <- paste0('f', nName)
   
@@ -1265,6 +1326,14 @@ keggErrorsFix <- function(){
     resQuery <- dbExecute(dbCon,sql) 
   }
   
+  #enzymes reactions erros
+  sql<- 'INSERT INTO enzReac VALUES(3, 2824);'
+  resQuery <- dbExecute(dbCon,sql) 
+  sql<- 'INSERT INTO enzReac VALUES(123, 183);'
+  resQuery <- dbExecute(dbCon,sql) 
+  sql<- 'INSERT INTO enzReac VALUES(345, 470);'
+  resQuery <- dbExecute(dbCon,sql) 
+  
   
   errorlist<-do.call(rbind, errorlist) #debug
   
@@ -1339,11 +1408,23 @@ getEdgesFromPath <- function(pathway){
   #retrive edges from a pathway graph using
   # enzime ecs identification
   
+  sql<-paste0('SELECT COUNT(*)
+              FROM path 
+              WHERE pName = "',pathway,'";')
+  count<- dbGetQuery(dbCon,sql)[1,1]
+  if(count == 0){
+    stop(paste0('Pathway ',pathway,' not found'))
+  }
   pathway<- paste0('"',pathway,'"')
   # ecs<- paste0('"',ecs,'"')
   # ecs <- do.call(paste, c(as.list(ecs), sep = ","))
   sql <- paste0(
-    'SELECT c1.cName as "from", c2.cName as "to", e.nName as "eName", e.type  
+    'SELECT c1.cName as "from", 
+            c2.cName as "to",
+            e.nId as "nId",
+            e.rName as "rName",
+            e.nName as "eName", 
+            e.type  
       FROM edges as e INNER JOIN  
       	reaction as r on r.rId = e.nId INNER JOIN  
       	wAllNodes as c1 on c1.cId = e.subs INNER JOIN  
@@ -1371,34 +1452,27 @@ getEdgesFromPath <- function(pathway){
   return(edges)
 }
 
-showGraph<-function(ecs = NA, 
-                    pathway,
-                    adj = T,
-                    plot = T,
-                    removeFake = F){
+getGraphFromPath<-function(pathway,
+                    removeFake = T,
+                    auxInfo = F){
+  closeDb <- F
+  if(!exists("dbCon")){
+    closeDb <- T
+    dbDir<<-file.path(dirBase,"data","database")
+    dbFile<<-file.path(dbDir,"dictionary.db")
+    #conect and test dictionary
+    dbCon <<- dbConnect(RSQLite::SQLite(), dbFile)
+  }else if(!dbIsValid(dbCon)){
+    closeDb <- T
+    dbDir<<-file.path(dirBase,"data","database")
+    dbFile<<-file.path(dbDir,"dictionary.db")
+    #conect and test dictionary
+    dbCon <<- dbConnect(RSQLite::SQLite(), dbFile)
+  }    
+  #get edges from path
+  edges<-getEdgesFromPath(pathway = pathway)
   
-  dbDir<<-file.path(dirBase,"data","database")
-  dbFile<<-file.path(dbDir,"dictionary.db")
-  #conect and test dictionary
-  dbCon <<- dbConnect(RSQLite::SQLite(), dbFile)
-    
-  #pathway <- "ec00010"
-  
-  if(is.na(ecs)){
-    edges<-getEdgesFromPath(pathway = pathway)
-  }else{
-    # ecs<-c('ec:5.1.3.3','ec:2.7.1.2','ec:2.7.1.147',
-    #        'ec:5.1.3.15','ec:5.3.1.9','ec:2.7.1.199',
-    #        'ec:2.7.1.63','ec::2.7.1.1','ec:3.1.3.10',
-    #        'ec:3.1.3.9','ec:5.4.2.2') 
-    # 
-    # ecs<-c('ec:2.3.1.12','ec:1.2.4.1','ec:1.8.1.4',
-    #        'ec:1.2.7.1','ec:1.2.7.11','ec:2.7.1.40',
-    #        'ec:4.1.1.1','ec:4.2.1.11') 
-    # 
-    
-    edges <- getEdgesFromEcs(ecs = ecs, pathway = pathway )
-  }
+  #get coord of compounds for plot
   sql<-paste0('select cName, x, y
               FROM compOnPath as cp INNER JOIN
               	compound as c on c.cId = cp.cId inner JOIN
@@ -1409,7 +1483,7 @@ showGraph<-function(ecs = NA,
                  cpd$cName)
   cpd<-cpd[!duplicated(cpd$cName),]
   
-  
+  #create the compound graph
   g1 <- graph_from_data_frame(edges, 
                                    directed=TRUE, 
                                    vertices=NULL)
@@ -1427,16 +1501,182 @@ showGraph<-function(ecs = NA,
             (max(cpd$x)-min(cpd$x))*1000 + 25
   cpd$y <- (cpd$y-min(cpd$y))/
     (max(cpd$y)-min(cpd$y))*500 + 25
+  
+
+  attrs<-data.frame(color='cyan',
+                    name = V(g1)$name,
+                    curved = T,
+                    stringsAsFactors = F)
+  attrs$color[grep('^f',attrs$name)]<-"red"
+  
+  vertex_attr(g1) <- list(name= attrs$name,
+                          color = attrs$color,
+                          curved = attrs$curved,
+                          x= cpd$x,
+                          y = cpd$y)
+  
+  edge_attr(g1, "curved") <- rep(T, gsize(g1))
+
+  g4<-cleanedLineGraph(g1, removeFake = removeFake)
+  
+  attrs<-data.frame(idx = seq(1,length(V(g4))),
+                    color='yellow',
+                    eName = vertex_attr(g4,"eName"),
+                    stringsAsFactors = F)
+  attrs$eName <- gsub(pattern = "[+]",
+                     replacement = '',
+                     attrs$eName)
+  attrs$eName <- gsub(pattern = "_[0-9]",
+                      replacement = '',
+                      attrs$eName)
+  #get enzymes coord
+  sql<-paste0('select eName, x, y
+              FROM enzOnPath as ep INNER JOIN
+                enzime as e on e.eId = ep.eId inner JOIN
+                path as p on p.pid = ep.pId
+              WHERE p.pName ="',pathway,'"') 
+  cpd<- dbGetQuery(dbCon,sql)
+
+  cpd$x[is.na(cpd$x)]<-600
+  cpd$y[is.na(cpd$y)]<-300
+  
+  cpd$x <- (cpd$x-min(cpd$x))/
+    (max(cpd$x)-min(cpd$x))*1000 + 25
+  cpd$y <- (cpd$y-min(cpd$y))/
+    (max(cpd$y)-min(cpd$y))*500 + 25
+  
+  attrs<-merge(attrs,cpd,
+               by.x='eName',
+               by.y = 'eName',
+               all.x = T)
+
+  attrs<-attrs[order(attrs$idx),]
+
+  vertex_attr(g4, "color") <- attrs$color
+  vertex_attr(g4, "x") <- attrs$x
+  vertex_attr(g4, "y") <- attrs$y
+  
+  if(closeDb){
+    dbDisconnect(dbCon)  
+  }
+  
+  edge_attr(g1,'label')<-edge_attr(g1,"nId")
+  vertex_attr(g4,'name')<-vertex_attr(g4,"nId")
+
+  if(auxInfo){
+    return(list(g1,g4))
+  }else{
+    return(g4)
+  }
+
+}
+
+
+showGraph<-function(pathway,
+                    auxInfo = T,
+                    label = 'enzyme',
+                    removeFake = T){
+
+  if(!label %in% c('enzyme','reaction','id')){
+    stop('Label must be "enzyme", "reaction" or "id".')
+  }
+  lGraph<-getGraphFromPath(pathway = pathway,
+                   removeFake = removeFake,
+                   auxInfo = auxInfo)
+  g1<-lGraph[[1]]
+  g2 <-lGraph[[2]]
+  # coords1<-lGraph[[3]]
+  # coords2<-lGraph[[4]]
+  
+  if(label == 'enzyme'){
+    edge_attr(g1,'label')<-edge_attr(g1,"eName")
+    vertex_attr(g2,'name')<-vertex_attr(g2,"eName")
+  }else if(label == 'reaction'){
+    edge_attr(g1,'label')<-edge_attr(g1,"rName")
+    vertex_attr(g2,'name')<-vertex_attr(g2,"rName")
+  }
+  coords1 <- matrix(c(V(g1)$x,V(g1)$y),ncol = 2)
+  coords2 <- matrix(c(V(g2)$x,V(g2)$y),ncol = 2)
+  
+  tk1<-tkplot(g1,canvas.width = 1200,
+              canvas.height = 650)
+  tk_set_coords(tk1,coords1)
+  tk_center(tk1)
+
+  tk2<-tkplot(g2,canvas.width = 1200,
+              canvas.height = 650)
+  tk_set_coords(tk2,coords2)
+  tk_center(tk2)
+
+}
+
+
+showGraphOld<-function(ecs = NA, 
+                    pathway,
+                    adj = T,
+                    plot = T,
+                    removeFake = F){
+  
+  dbDir<<-file.path(dirBase,"data","database")
+  dbFile<<-file.path(dbDir,"dictionary.db")
+  #conect and test dictionary
+  dbCon <<- dbConnect(RSQLite::SQLite(), dbFile)
+  
+  #pathway <- "ec00010"
+  
+  if(is.na(ecs)){
+    edges<-getEdgesFromPath(pathway = pathway)
+  }else{
+    # ecs<-c('ec:5.1.3.3','ec:2.7.1.2','ec:2.7.1.147',
+    #        'ec:5.1.3.15','ec:5.3.1.9','ec:2.7.1.199',
+    #        'ec:2.7.1.63','ec::2.7.1.1','ec:3.1.3.10',
+    #        'ec:3.1.3.9','ec:5.4.2.2')
+    #
+    # ecs<-c('ec:2.3.1.12','ec:1.2.4.1','ec:1.8.1.4',
+    #        'ec:1.2.7.1','ec:1.2.7.11','ec:2.7.1.40',
+    #        'ec:4.1.1.1','ec:4.2.1.11')
+    #
+    
+    edges <- getEdgesFromEcs(ecs = ecs, pathway = pathway )
+  }
+  sql<-paste0('select cName, x, y
+              FROM compOnPath as cp INNER JOIN
+              	compound as c on c.cId = cp.cId inner JOIN
+              	path as p on p.pid = cp.pId
+              WHERE p.pName = "',pathway,'"')
+  cpd<- dbGetQuery(dbCon,sql)
+  cpd$cName<-sub(pattern = 'cpd:',replacement = '',
+                 cpd$cName)
+  cpd<-cpd[!duplicated(cpd$cName),]
+  
+  
+  g1 <- graph_from_data_frame(edges,
+                              directed=TRUE,
+                              vertices=NULL)
+  
+  tmp<-data.frame(idx = seq(1,length(V(g1))),
+                  cName = V(g1)$name,
+                  stringsAsFactors = F)
+  
+  cpd<-merge(tmp,cpd,by="cName",all.x = T)
+  cpd<-cpd[order(cpd$idx),]
+  cpd$x[is.na(cpd$x)]<-600
+  cpd$y[is.na(cpd$y)]<-300
+  
+  cpd$x <- (cpd$x-min(cpd$x))/
+    (max(cpd$x)-min(cpd$x))*1000 + 25
+  cpd$y <- (cpd$y-min(cpd$y))/
+    (max(cpd$y)-min(cpd$y))*500 + 25
   coords<-matrix(c(cpd$x,cpd$y),ncol = 2)
   
   edgeNames<-E(g1)$eName
   edge_attr(g1)
-    #print(g1, e=TRUE, v=TRUE)
+  #print(g1, e=TRUE, v=TRUE)
   edge_attr(g1) <- list(color = rep("black", gsize(g1)),
-                       curved = rep(T, gsize(g1)))
-  edge_attr(g1, "label") <- edgeNames 
+                        curved = rep(T, gsize(g1)))
+  edge_attr(g1, "label") <- edgeNames
   #tkplot(g1)
-
+  
   attrs<-data.frame(color='cyan',
                     name = V(g1)$name,
                     stringsAsFactors = F)
@@ -1444,12 +1684,12 @@ showGraph<-function(ecs = NA,
   
   vertex_attr(g1) <- list(name= attrs$name,
                           color = attrs$color)
-  tk1<-tkplot(g1,canvas.width = 1200, 
+  tk1<-tkplot(g1,canvas.width = 1200,
               canvas.height = 650)
   tk_set_coords(tk1,coords)
   tk_center(tk1)
   
-  g3<-cleanedLineGraph(g1, removeFake = removeFake)
+  g3<-cleanedLineGraphOld(g1, removeFake = removeFake)
   
   
   g4<-graph_from_data_frame(g3, directed = T)
@@ -1464,17 +1704,17 @@ showGraph<-function(ecs = NA,
               FROM enzOnPath as ep INNER JOIN
                 enzime as e on e.eId = ep.eId inner JOIN
                 path as p on p.pid = ep.pId
-              WHERE p.pName ="',pathway,'"') 
+              WHERE p.pName ="',pathway,'"')
   cpd<- dbGetQuery(dbCon,sql)
   # cpd$eName<-sub(pattern = 'cpd:',replacement = '',
   #                cpd$cName)
   # cpd<-cpd[!duplicated(cpd$eName),]
-     
+  
   tmp<-data.frame(idx = seq(1,length(V(g4))),
                   eName = V(g4)$name,
                   stringsAsFactors = F)
   tmp$eName<-sub(pattern = '[+]',replacement = '',
-                                 tmp$eName)
+                 tmp$eName)
   cpd<-merge(tmp,cpd,by="eName",all.x = T)
   cpd<-cpd[order(cpd$idx),]
   cpd$x[is.na(cpd$x)]<-600
@@ -1486,18 +1726,117 @@ showGraph<-function(ecs = NA,
     (max(cpd$y)-min(cpd$y))*500 + 25
   coords<-matrix(c(cpd$x,cpd$y),ncol = 2)
   
-  tk4<-tkplot(g4,canvas.width = 1200, 
+  tk4<-tkplot(g4,canvas.width = 1200,
               canvas.height = 650)
   tk_set_coords(tk4,coords)
   tk_center(tk4)
   
-  dbDisconnect(dbCon)  
+  dbDisconnect(dbCon)
   return(g4)
-
+  # 
   #plot(edges)
 }
 
 cleanedLineGraph <- function(g1, removeFake = F){
+  
+  #labels<-edge_attr(g1,"label")
+  nIds<-edge_attr(g1,"nId")
+  rNames <- edge_attr(g1,"rName")
+  eNames <- edge_attr(g1,"eName")
+  gData <- data.frame(nId = nIds,
+                      rName = rNames,
+                      eName = eNames,
+                      stringsAsFactors = F)
+  
+#  edgeNames<-E(g1)$label
+  g2 <- make_line_graph(g1)
+  
+  #vertex_attr(g2, "label")<- labels
+  vertex_attr(g2, "nId")<-nIds
+  vertex_attr(g2, "rNames") <- rNames
+  vertex_attr(g2, "eNames") <- eNames
+  vertex_attr(g2,"name")<-nIds
+  
+  #vNames<- V(g2)$label
+  vNames<- data.frame(nr = seq(1,length(V(g2)),1), 
+                      nId = nIds,
+                      rNames = rNames,
+                      eNames = eNames,
+                      stringsAsFactors = F)
+  
+  #remove duplicity
+  g3<-as_data_frame(g2,what = "edges")
+  
+  nrow(g3[g3$from == g3$to,])
+  sum(duplicated(vNames$label))
+  
+  g3<- merge(g3, vNames[,c("nId","eNames","rNames")], 
+             by.x="from",
+             by.y="nId")
+  colnames(g3) <- c("fromId","toId","from","fromR")
+  
+  g3<- merge(g3, vNames[,c("nId","eNames","rNames")], 
+             by.x="toId",
+             by.y="nId")
+  # g3$toO<-NULL
+  # g3$fromO<-NULL
+  colnames(g3)[5] <- "to"
+  colnames(g3)[6] <- "toR"
+  
+  if(removeFake){
+    #remove fake nodes
+    g3$from<-sub(pattern = 'S.+$', 
+                 replacement = '', 
+                 sub(pattern = '^f',replacement = '', 
+                     g3$from))
+    
+    g3$to<-sub(pattern = 'S.+$', 
+               replacement = '', 
+               sub(pattern = '^f',replacement = '', 
+                   g3$to))
+    g3$from<-sub(pattern = 'P.+$', 
+               replacement = '', 
+               sub(pattern = '^f',replacement = '', 
+                   g3$from))
+    g3$to<-sub(pattern = 'P.+$', 
+               replacement = '', 
+               sub(pattern = '^f',replacement = '', 
+                   g3$to))
+  }
+  #remove duplicated
+  g3<-g3[g3$from != g3$to,]
+  g3<-g3[!duplicated(g3),]
+  
+  tmp1<-g3[,c("fromId","from","fromR")]
+  colnames(tmp1)<-c("nId","eName", "rName")
+  tmp2<-g3[,c("toId","to","toR")]
+  colnames(tmp2)<-c("nId","eName", "rName")
+  dictionary<-rbind(tmp1,tmp2)
+  dictionary<-dictionary[!duplicated(dictionary),]
+  
+  
+  g3<-g3[,c("fromId","toId")]
+  colnames(g3)<-c("from","to")
+
+  
+  g4<-graph_from_data_frame(g3, directed = T)
+  tmp1<- data.frame(nr = seq(1,length(V(g4)),1), 
+                      nId = V(g4)$name)
+  dictionary<-merge(dictionary,
+                    tmp1,
+                    by="nId")
+  
+  dictionary<-dictionary[order(dictionary$nr),]
+      
+  vertex_attr(g4, "nId")<-dictionary$nId
+  vertex_attr(g4, "rName") <- dictionary$rName
+  vertex_attr(g4, "eName") <- dictionary$eName
+  V(g4)
+  return(g4)
+  
+}
+
+cleanedLineGraphOld <- function(g1, removeFake = F){
   
   
   edgeNames<-E(g1)$label
@@ -1540,9 +1879,9 @@ cleanedLineGraph <- function(g1, removeFake = F){
                sub(pattern = '^f',replacement = '', 
                    g3$to))
     g3$from<-sub(pattern = 'P.+$', 
-               replacement = '', 
-               sub(pattern = '^f',replacement = '', 
-                   g3$from))
+                 replacement = '', 
+                 sub(pattern = '^f',replacement = '', 
+                     g3$from))
     g3$to<-sub(pattern = 'P.+$', 
                replacement = '', 
                sub(pattern = '^f',replacement = '', 
@@ -1556,8 +1895,91 @@ cleanedLineGraph <- function(g1, removeFake = F){
   
 }
 
+
 removeFakeNodes<-function(){
   
+}
+
+checkNewName <- function(name,
+                         type){
+  if(!type %in% c('n','r')){
+    stop('Use "n" for node name, and "r"for reaction name')
+  }
+  sql <- paste0('SELECT COUNT(*) as qtd
+          FROM edges
+          WHERE ',type,'Name = "', name,'";')
+  
+  return(dbGetQuery(dbCon,sql)[1,1])
+}
+
+getAllPathways <- function(){
+  sql<-paste0('SELECT pName
+              FROM path;')
+  paths<- dbGetQuery(dbCon,sql)[,1]
+  return(paths)
+}
+
+insertMetrics <- function(pathway){
+  #pathway = "ec00010" #debug
+  pId <- getPIdFromName(pathway = pathway )
+  g<-getGraphFromPath(pathway = pathway, 
+                      removeFake = T,
+                      auxInfo =F )
+  gProp<-getGraphProperties(g)
+  gProp$isAP<-0
+  APs<-as.character(getGraphBottleneck(g))
+  if(any(!APs %in% gProp$node)){
+    stop('At least one AP is missing in ',pathway)
+  }
+  gProp$isAP[gProp$node %in% APs] <- 1
+  
+  #for cases where no metric is avaliable
+  gProp[is.na(gProp)]<- -1
+
+  #insert df lines on table
+  idx=1
+  for (idx in 1:nrow(gProp)) {
+    sql <- paste0('INSERT INTO nodeMetric VALUES(',
+                  gProp$node[idx], ',', 
+                  pId, ',',
+                  gProp$isAP[idx], ',',
+                  gProp$connectivity[idx], ',',
+                  gProp$triangles[idx], ',',
+                  gProp$community[idx], ',',
+                  gProp$eccentricity[idx], ',',
+                  gProp$radius[idx], ',',
+                  gProp$diameter[idx], ',',
+                  gProp$degree[idx], ',',
+                  gProp$betweenness[idx], ',',
+                  gProp$clusteringCoef[idx], ',',
+                  gProp$closenessCoef[idx], ',',
+                  gProp$eigenvectorScore[idx], ',',
+                  gProp$authorityScore[idx], ',',
+                  gProp$hubScore[idx], ');')
+    resQuery <- dbExecute(dbCon,sql)
+    
+  }
+                
+                
+}
+
+cleanMetrics<- function(){
+  #prepare the table nodeMetric to receive data
+  sql <- "DELETE FROM nodeMetric"
+  resQuery <- dbExecute(dbCon,sql)
+  
+}
+
+getPIdFromName <- function(pathway){
+  sql <- paste0('SELECT pId
+          FROM path
+          WHERE pName  = "', pathway,'";')
+  
+  pId<-as.integer(dbGetQuery(dbCon,sql)[1,1])
+  if(is.na(pId)){
+    stop(paste0('Pathway ',pathway,' not found'))
+  }
+  return(pId)
 }
 #FIM ----
 # searchValue <- function(table, field, value, pId = NA){

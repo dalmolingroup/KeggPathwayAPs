@@ -80,7 +80,7 @@ downloadKGML(dirBase = dirBase,
 # WARNING: all data will be lost
 createDB(dbTemplate = dbTemplate,
          dbFile = dbFile,
-         skip = F)
+         skip = T)
 
 # read xml files and load data to database
 generateDataFromKGML(dirBase = dirBase,
@@ -89,8 +89,12 @@ generateDataFromKGML(dirBase = dirBase,
 
 createNodesFromEC(dirBase = dirBase, skip = T)
 
-showGraph(pathway = "ec00020", removeFake = T)
+createGraphMetrics(skip = T)
 
+
+
+showGraph(pathway = "ec00333", removeFake = T,label = "id")
+showGraphOld(pathway = "ec00040", removeFake = T)
 ecs<-c('ec:5.1.3.3','ec:2.7.1.147','ec:2.7.1.2','ec:2.7.1.63',
               'ec:5.1.3.15','ec:5.3.1.9','ec:2.7.1.199',
               'ec::2.7.1.1','ec:3.1.3.10',

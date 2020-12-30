@@ -365,3 +365,51 @@ createNodesFromEC <- function(dirBase,
   }
   dbDisconnect(dbCon)
 }
+
+createGraphMetrics <- function(pathways = 'all',
+                               skip = T){
+  
+  if(skip){
+    cat("Skiping metrics generation... \n\n")
+    return(0)
+  }
+  logFile <<- file.path(dirBase,"log","phase4.log")
+  
+  cat("Starting graph metric generation... \n\n")
+  cat(file = logFile, append = F,
+      "\n\n ***************************************************\n",
+      "Starting graph metric generation...\n",
+      date(),"\n",
+      "***************************************************\n\n")
+  
+  
+  dbDir<<-file.path(dirBase,"data","database")
+  dbFile<<-file.path(dbDir,"dictionary.db")
+  #check if db folder not exists
+  if(!dir.exists(dbDir)){
+    stop("Database is missing...")
+  }
+  #conect and test dictionary
+  dbCon <<- dbConnect(RSQLite::SQLite(), dbFile)
+  #check if is an empty db. If it is, copy from template
+  if(length(dbListTables(dbCon)) == 0){
+    dbDisconnect(dbCon)
+    stop("Database is missing. Please, run phase 2 first...")
+  }
+  
+  cleanMetrics()
+  if(pathways == 'all'){
+    pathways <- getAllPathways()
+  }
+  count = 1
+  total = length(pathways)
+  for(pathway in pathways){
+    cat("Generating metrics for ", pathway,"[", count,"of",total,"]\n")
+    cat(file = logFile, append = F,
+        "Generating metrics for ", pathway,"... \n")
+    insertMetrics(pathway)
+    count <- count +1
+  }
+  dbDisconnect(dbCon)
+  
+}

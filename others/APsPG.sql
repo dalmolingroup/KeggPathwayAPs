@@ -26,9 +26,7 @@ CREATE TABLE public.edges (
 	subs integer NOT NULL,
 	prod integer NOT NULL,
 	type text NOT NULL,
-	reversible integer NOT NULL,
-	CONSTRAINT edges_pk PRIMARY KEY ("nId")
-
+	reversible integer NOT NULL
 );
 -- ddl-end --
 -- ALTER TABLE public.edges OWNER TO postgres;
@@ -62,16 +60,16 @@ CREATE TABLE public.path (
 -- ALTER TABLE public.path OWNER TO postgres;
 -- ddl-end --
 
--- object: public."edgesOnPath" | type: TABLE --
--- DROP TABLE IF EXISTS public."edgesOnPath" CASCADE;
-CREATE TABLE public."edgesOnPath" (
+-- object: public."nodesOnPath" | type: TABLE --
+-- DROP TABLE IF EXISTS public."nodesOnPath" CASCADE;
+CREATE TABLE public."nodesOnPath" (
 	"nId" integer,
 	"pId" integer,
 	x integer,
 	y integer
 );
 -- ddl-end --
--- ALTER TABLE public."edgesOnPath" OWNER TO postgres;
+-- ALTER TABLE public."nodesOnPath" OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.reaction | type: TABLE --
@@ -191,35 +189,58 @@ CREATE TABLE public."compOnPath" (
 -- ALTER TABLE public."compOnPath" OWNER TO postgres;
 -- ddl-end --
 
--- object: public."raectionAssociation" | type: TABLE --
--- DROP TABLE IF EXISTS public."raectionAssociation" CASCADE;
-CREATE TABLE public."raectionAssociation" (
+-- object: public."reactionAssociation" | type: TABLE --
+-- DROP TABLE IF EXISTS public."reactionAssociation" CASCADE;
+CREATE TABLE public."reactionAssociation" (
 	"rId" integer NOT NULL,
 	"mainRId" integer NOT NULL
 );
 -- ddl-end --
--- ALTER TABLE public."raectionAssociation" OWNER TO postgres;
+-- ALTER TABLE public."reactionAssociation" OWNER TO postgres;
 -- ddl-end --
 
--- object: public."fakeEdge" | type: TABLE --
--- DROP TABLE IF EXISTS public."fakeEdge" CASCADE;
-CREATE TABLE public."fakeEdge" (
-	"nextId" integer
+-- object: public."fakeNode" | type: TABLE --
+-- DROP TABLE IF EXISTS public."fakeNode" CASCADE;
+CREATE TABLE public."fakeNode" (
+	"cId" integer NOT NULL,
+	"cName" text NOT NULL,
+	"cDesc" text,
+	CONSTRAINT compound_pk2 PRIMARY KEY ("cId")
+
 );
 -- ddl-end --
--- ALTER TABLE public."fakeEdge" OWNER TO postgres;
+-- ALTER TABLE public."fakeNode" OWNER TO postgres;
+-- ddl-end --
+
+-- object: public."nodeName" | type: TABLE --
+-- DROP TABLE IF EXISTS public."nodeName" CASCADE;
+CREATE TABLE public."nodeName" (
+	"nId" integer NOT NULL,
+	"nName" text NOT NULL,
+	"childName" text NOT NULL,
+	type text NOT NULL
+);
+-- ddl-end --
+-- ALTER TABLE public."nodeName" OWNER TO postgres;
+-- ddl-end --
+
+-- object: "edgFk" | type: CONSTRAINT --
+-- ALTER TABLE public.edges DROP CONSTRAINT IF EXISTS "edgFk" CASCADE;
+ALTER TABLE public.edges ADD CONSTRAINT "edgFk" FOREIGN KEY ("nId")
+REFERENCES public.reaction ("rId") MATCH FULL
+ON DELETE NO ACTION ON UPDATE NO ACTION;
 -- ddl-end --
 
 -- object: "nxmFk" | type: CONSTRAINT --
--- ALTER TABLE public."edgesOnPath" DROP CONSTRAINT IF EXISTS "nxmFk" CASCADE;
-ALTER TABLE public."edgesOnPath" ADD CONSTRAINT "nxmFk" FOREIGN KEY ("nId")
+-- ALTER TABLE public."nodesOnPath" DROP CONSTRAINT IF EXISTS "nxmFk" CASCADE;
+ALTER TABLE public."nodesOnPath" ADD CONSTRAINT "nxmFk" FOREIGN KEY ("nId")
 REFERENCES public.edges ("nId") MATCH FULL
 ON DELETE NO ACTION ON UPDATE NO ACTION;
 -- ddl-end --
 
 -- object: "mxnFk" | type: CONSTRAINT --
--- ALTER TABLE public."edgesOnPath" DROP CONSTRAINT IF EXISTS "mxnFk" CASCADE;
-ALTER TABLE public."edgesOnPath" ADD CONSTRAINT "mxnFk" FOREIGN KEY ("pId")
+-- ALTER TABLE public."nodesOnPath" DROP CONSTRAINT IF EXISTS "mxnFk" CASCADE;
+ALTER TABLE public."nodesOnPath" ADD CONSTRAINT "mxnFk" FOREIGN KEY ("pId")
 REFERENCES public.path ("pId") MATCH FULL
 ON DELETE NO ACTION ON UPDATE NO ACTION;
 -- ddl-end --
@@ -337,16 +358,23 @@ ON DELETE NO ACTION ON UPDATE NO ACTION;
 -- ddl-end --
 
 -- object: "rAssFk1" | type: CONSTRAINT --
--- ALTER TABLE public."raectionAssociation" DROP CONSTRAINT IF EXISTS "rAssFk1" CASCADE;
-ALTER TABLE public."raectionAssociation" ADD CONSTRAINT "rAssFk1" FOREIGN KEY ("rId")
+-- ALTER TABLE public."reactionAssociation" DROP CONSTRAINT IF EXISTS "rAssFk1" CASCADE;
+ALTER TABLE public."reactionAssociation" ADD CONSTRAINT "rAssFk1" FOREIGN KEY ("rId")
 REFERENCES public.reaction ("rId") MATCH FULL
 ON DELETE NO ACTION ON UPDATE NO ACTION;
 -- ddl-end --
 
 -- object: "rAssFk2" | type: CONSTRAINT --
--- ALTER TABLE public."raectionAssociation" DROP CONSTRAINT IF EXISTS "rAssFk2" CASCADE;
-ALTER TABLE public."raectionAssociation" ADD CONSTRAINT "rAssFk2" FOREIGN KEY ("mainRId")
-REFERENCES public."raectionAssociation" ("rId") MATCH FULL
+-- ALTER TABLE public."reactionAssociation" DROP CONSTRAINT IF EXISTS "rAssFk2" CASCADE;
+ALTER TABLE public."reactionAssociation" ADD CONSTRAINT "rAssFk2" FOREIGN KEY ("mainRId")
+REFERENCES public."reactionAssociation" ("rId") MATCH FULL
+ON DELETE NO ACTION ON UPDATE NO ACTION;
+-- ddl-end --
+
+-- object: "nnmFk" | type: CONSTRAINT --
+-- ALTER TABLE public."nodeName" DROP CONSTRAINT IF EXISTS "nnmFk" CASCADE;
+ALTER TABLE public."nodeName" ADD CONSTRAINT "nnmFk" FOREIGN KEY ("nId")
+REFERENCES public.edges ("nId") MATCH FULL
 ON DELETE NO ACTION ON UPDATE NO ACTION;
 -- ddl-end --
 
