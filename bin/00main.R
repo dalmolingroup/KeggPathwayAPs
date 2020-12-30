@@ -23,14 +23,19 @@ rm(list=ls(all=TRUE))
 #Did you change it to your base location?
 dirBase<-"Place here the correct name of your work folder"
 
-dirBase<-"/home/clovis/Dropbox/projetos/Igor/gitAPs"
+dirBase<<-"/home/clovis/Dropbox/projetos/Igor/gitAPs"
 
 #figures
-dirFig<-file.path(dirBase,"figures")
+dirFig<<-file.path(dirBase,"figures")
 #bin dir
-binDir<-file.path(dirBase,"bin")
+binDir<<-file.path(dirBase,"bin")
 #function dir
-funcDir<-file.path(binDir,"functions")
+funcDir<<-file.path(binDir,"functions")
+#database folder and file
+dbDir<<-file.path(dirBase,"data","database")
+dbTemplate <- file.path(dbDir,"APs.sql")
+dbFile<<-file.path(dbDir,"dictionary.db")
+
 
 #Organisms to process
 #Put here your list of organisms inside the '...' separated by space and "..." as delimiter
@@ -54,12 +59,15 @@ createOrgList(funcDir = funcDir, orgList = orgList)
 #   skip - don't execute this phase and a downloaded data
 #     to execute your own download change skip to F
 
+
 # The ec XML files  are necessary to generate the dictionary of nodes.
 # Skip if using our pre downloaded ec XML files available on github
 downloadKGML(dirBase = dirBase, 
              simProcesses = 1, 
              dataType = "ec", 
              skip = T) 
+
+
 # Download the organims XML files
 # Skip if using our hsa and mmu pre downloaded XML files available on github
 downloadKGML(dirBase = dirBase, 
@@ -68,7 +76,29 @@ downloadKGML(dirBase = dirBase,
              organisms = "some", 
              skip = T) 
 
+#create a new empty database
+# WARNING: all data will be lost
+createDB(dbTemplate = dbTemplate,
+         dbFile = dbFile,
+         skip = T)
+
+# read xml files and load data to database
 generateDataFromKGML(dirBase = dirBase,
                      dataType = 'ec',
-                     skip = F)
+                     skip = T)
 
+createNodesFromEC(dirBase = dirBase, skip = T)
+
+createGraphMetrics(skip = T)
+
+
+
+showGraph(pathway = "ec00333", removeFake = T,label = "id")
+showGraphOld(pathway = "ec00040", removeFake = T)
+ecs<-c('ec:5.1.3.3','ec:2.7.1.147','ec:2.7.1.2','ec:2.7.1.63',
+              'ec:5.1.3.15','ec:5.3.1.9','ec:2.7.1.199',
+              'ec::2.7.1.1','ec:3.1.3.10',
+              'ec:3.1.3.9','ec:5.4.2.2')
+       
+ecs<-c('ec:4.1.1.1','ec:2.3.1.12','ec:1.2.4.1','ec:1.8.1.4','ec:6.2.1.1','ec:6.2.1.13')
+showGraph(pathway = "ec00010", ecs = ecs, plot = T)

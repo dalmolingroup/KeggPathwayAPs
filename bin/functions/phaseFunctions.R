@@ -64,6 +64,7 @@ generateDataFromKGML <- function(dirBase,
   #   dirBase - name of your work folder
   #   dataType - Use ec to porcess ec pathways and ko for ko pathways
   #   skip - don't execute this phase
+  # the data will be stored inside the database
   
   
   dataType = "ec" #debug
@@ -75,7 +76,7 @@ generateDataFromKGML <- function(dirBase,
   logFile <<- file.path(dirBase,"log","phase2.log")
 
   cat("Starting", dataType,  "pathways processing... \n\n")
-  cat(file = logFile, append = T,
+  cat(file = logFile, append = F,
       "\n\n ***************************************************\n",
       "Starting", dataType,  "pathways processing...\n",
       date(),"\n",
@@ -88,7 +89,7 @@ generateDataFromKGML <- function(dirBase,
     dir.create(filterDir, recursive = T)
   }
   dbDir<-file.path(dirBase,"data","database")
-  dbTemplate<-file.path(dbDir,"dictionaryTemplate.db")
+  dbTemplate<-file.path(dbDir,"APs.sql")
   dbFile<-file.path(dbDir,"dictionary.db")
   # Define the reference pathway
   if(dataType == 'ec'){
@@ -103,7 +104,8 @@ generateDataFromKGML <- function(dirBase,
       if(length(dbListTables(dbCon)) == 0){
       dbDisconnect(dbCon)
       if(file.exists(dbTemplate)){
-        file.copy(dbTemplate, dbFile, overwrite = T)
+        # file.copy(dbTemplate, dbFile, overwrite = T)
+        createDB(dbTemplate, dbFile)
       }else{
         stop("Database template is missing. Please download it from github...")
       }
@@ -126,7 +128,7 @@ generateDataFromKGML <- function(dirBase,
     # IMPORTANTE: Aqui estou reduzindo a lista das pathways para não ficar tão pesado!
     #*********************************************************************************#
     #kgml_list = c('ec00010.xml', 'ec00520.xml') #debug
-    #kgml_list = c('ec00121.xml') #debug
+    #kgml_list = c('ec00010.xml') #debug
     
     kgml_index <- 1
     
@@ -156,6 +158,9 @@ generateDataFromKGML <- function(dirBase,
       current_kgml <- KGML2Dataframe(kgml_, dataType, dbCon)
     })
       
+    setSecondaryCompounds()
+    keggErrorsFix()
+    
   #     #parei aqui ----      
   #     # Get the pathway code
   #     pathway_code <- onlyNumber(file)
@@ -307,4 +312,104 @@ generateDataFromKGML <- function(dirBase,
     
   }
   dbDisconnect(dbCon)
+}
+
+# Phase 03 ----
+# Analise database and create edges information based on ec maps
+# insert edges information
+# create edges on each path
+# create virtual nodes
+# save data inside sqlite database
+createNodesFromEC <- function(dirBase,
+                              dataType = "ec",
+                              skip = T) {
+  #Parameters:
+  #   dirBase - name of your work folder
+  #   dataType - Use ec to porcess ec pathways and ko for ko pathways
+  #   skip - don't execute this phase
+  # the data will be stored inside the database
+  
+  
+  dataType = "ec" #debug
+  if(skip){
+    cat("Skiping", dataType,  "pathways processing... \n\n")
+    return(0)
+  }
+  
+  logFile <<- file.path(dirBase,"log","phase3.log")
+  
+  cat("Starting", dataType,  "edges processing... \n\n")
+  cat(file = logFile, append = F,
+      "\n\n ***************************************************\n",
+      "Starting", dataType,  "edges processing...\n",
+      date(),"\n",
+      "***************************************************\n\n")
+  
+  
+  dbDir<<-file.path(dirBase,"data","database")
+  dbFile<<-file.path(dbDir,"dictionary.db")
+  # Define the reference pathway
+  if(dataType == 'ec'){
+    #check if db folder not exists
+    if(!dir.exists(dbDir)){
+      stop("Database is missing...")
+    }
+    #conect and test dictionary
+    dbCon <<- dbConnect(RSQLite::SQLite(), dbFile)
+    #check if is an empty db. If it is, copy from template
+    if(length(dbListTables(dbCon)) == 0){
+      dbDisconnect(dbCon)
+        stop("Database is missing. Please, run phase 2 first...")
+    }
+    createNodes()
+  }
+  dbDisconnect(dbCon)
+}
+
+createGraphMetrics <- function(pathways = 'all',
+                               skip = T){
+  
+  if(skip){
+    cat("Skiping metrics generation... \n\n")
+    return(0)
+  }
+  logFile <<- file.path(dirBase,"log","phase4.log")
+  
+  cat("Starting graph metric generation... \n\n")
+  cat(file = logFile, append = F,
+      "\n\n ***************************************************\n",
+      "Starting graph metric generation...\n",
+      date(),"\n",
+      "***************************************************\n\n")
+  
+  
+  dbDir<<-file.path(dirBase,"data","database")
+  dbFile<<-file.path(dbDir,"dictionary.db")
+  #check if db folder not exists
+  if(!dir.exists(dbDir)){
+    stop("Database is missing...")
+  }
+  #conect and test dictionary
+  dbCon <<- dbConnect(RSQLite::SQLite(), dbFile)
+  #check if is an empty db. If it is, copy from template
+  if(length(dbListTables(dbCon)) == 0){
+    dbDisconnect(dbCon)
+    stop("Database is missing. Please, run phase 2 first...")
+  }
+  
+  cleanMetrics()
+  if(pathways == 'all'){
+    pathways <- getAllPathways()
+  }
+  count = 1
+  total = length(pathways)
+  for(pathway in pathways){
+    cat("Generating metrics for ", pathway,"[", count,"of",total,"]\n")
+    cat(file = logFile, append = F,
+        "Generating metrics for ", pathway,"... \n")
+    insertMetrics(pathway)
+    count <- count +1
+  }
+  dbDisconnect(dbCon)
+  
 }

@@ -52,11 +52,12 @@ library(pracma) # string manipulation
 #' @author
 #' Diego Morais / Igor Brandão
 
-getGraphProperties <- function(iGraph_) {
+getGraphProperties <- function(g) {
 
   tryCatch({
-    # Convert the dataFrame to iGraph object
-    g <- igraph::graph_from_data_frame(iGraph_, directed = TRUE)
+    # Convert to dataFrame the iGraph object
+    iGraph_<- igraph::as_data_frame(g)
+    #g <- igraph::graph_from_data_frame(iGraph_, directed = TRUE)
 
     # Calculates betweenness
     # Measure of centrality in a graph based on shortest paths
@@ -68,7 +69,7 @@ getGraphProperties <- function(iGraph_) {
 
     rownames(result) <- NULL
 
-    k <- as.data.frame(table(iGraph_$node1))
+    k <- as.data.frame(table(iGraph_$from))
 
     # Calculates the connectivity
     # # minimum number of elements (nodes or edges) that need to be removed to separate
@@ -95,9 +96,12 @@ getGraphProperties <- function(iGraph_) {
 
     # Calculates the vertex communities
     # greedy method (hiearchical, fast method)
-    c3 = cluster_edge_betweenness(g)
-    result$community <- as.integer(membership(c3))
-
+    # c3 = suppressWarnings(cluster_edge_betweenness(g, 
+    #                               directed = T,
+    #                               modularity = F))
+    # result$community <- as.integer(membership(c3))
+    result$community <- 0
+    
     # Calculates the Eigenvector Centrality Scores of Network Positions
     # It is a measure of the influence of a node in a network.
     eigen_centrality <- igraph::eigen_centrality(g, directed = TRUE)
@@ -140,6 +144,95 @@ getGraphProperties <- function(iGraph_) {
   })
 }
 
+getGraphPropertiesOld <- function(iGraph_) {
+  
+  tryCatch({
+    # Convert the dataFrame to iGraph object
+    g <- igraph::graph_from_data_frame(iGraph_, directed = TRUE)
+    
+    # Calculates betweenness
+    # Measure of centrality in a graph based on shortest paths
+    betweenness <- igraph::betweenness(g, normalized = TRUE)
+    
+    # Define the result dataFrame
+    result <- data.frame(node = names(betweenness), betweenness = betweenness,
+                         stringsAsFactors = FALSE)
+    
+    rownames(result) <- NULL
+    
+    k <- as.data.frame(table(iGraph_$node1))
+    
+    # Calculates the connectivity
+    # # minimum number of elements (nodes or edges) that need to be removed to separate
+    # the remaining nodes into isolated subgraphs.
+    result$connectivity <- 0
+    result$connectivity <- k[match(result$node, k$Var1), 2]
+    result$connectivity[is.na(result$connectivity)] <- 0
+    
+    # Calculates the triangles
+    # How many triangles a vertex is part of, in a graph, or just list the triangles of a graph.
+    result$triangles <- vapply(result$node, function(x){
+      as.integer(igraph::count_triangles(g, vids = x))
+    }, integer(1))
+    
+    # Calculates the clustering coefficient
+    # Transitivity measures the probability that the adjacent vertices of a vertex are connected
+    result$clusteringCoef <- igraph::transitivity(g, vids = result$node,
+                                                  isolates = "zero",
+                                                  type = "local")
+    
+    # Calculates the closeness coefficient
+    # Measures how many steps is required to access every other vertex from a given vertex.
+    result$closenessCoef <- suppressWarnings(igraph::closeness(g, vids=result$node))
+    
+    # Calculates the vertex communities
+    # greedy method (hiearchical, fast method)
+    c3 = cluster_edge_betweenness(g)
+    result$community <- as.integer(membership(c3))
+    
+    # Calculates the Eigenvector Centrality Scores of Network Positions
+    # It is a measure of the influence of a node in a network.
+    eigen_centrality <- igraph::eigen_centrality(g, directed = TRUE)
+    result$eigenvectorScore <- unlist(eigen_centrality[1]) # Just the scores
+    
+    # Calculates the eccentricity of a vertex
+    # It is defined as the maximum distance of one vertex from other vertex
+    result$eccentricity <- igraph::eccentricity(g, vids=result$node)
+    
+    # Calculates the radius of a vertex (entire graph)
+    # The smallest eccentricity in a graph is called its radius
+    result$radius <- igraph::radius(g)
+    
+    # Calculates the diameter of a vertex (entire graph)
+    # The diameter of a graph is the length of the longest geodesic
+    result$diameter <- igraph::diameter(g, directed = TRUE)
+    
+    # Calculates the degree of a vertex
+    # The degree of a vertex is the number of adjacent edges
+    result$degree <- igraph::degree(g, v=result$node)
+    
+    # Calculates the Kleinberg's authority centrality scores
+    # The authority scores of the vertices are defined as the principal
+    # eigenvector of t(A)*A, where A is the adjacency matrix of the graph
+    authority_score <- igraph::authority_score(g)
+    result$authorityScore <- unlist(authority_score[1]) # Just the scores
+    
+    # Calculates the Kleinberg's hub centrality scores
+    # The hub scores of the vertices are defined as the principal eigenvector
+    # of A*t(A), where A is the adjacency matrix of the graph
+    hub_score <- igraph::hub_score(g)
+    result$hubScore <- unlist(hub_score[1]) # Just the scores
+    
+    # Return the result data frame
+    return(result)
+    
+  }, error=function(e) {
+    print(paste0('It wasnt possible to retrieve properties from the graph. Skipping it...'))
+    return(NULL)
+  })
+}
+
+
 #' Given an iGraph object, this function set each vertex communities
 #'
 #' @param iGraph_ An iGraph object.
@@ -160,6 +253,7 @@ getGraphProperties <- function(iGraph_) {
 
 setGraphCommunity <- function(iGraph_, verbose_=FALSE) {
   # greedy method (hiearchical, fast method)
+  #do not work for direted graph
   c3 = cluster_edge_betweenness(iGraph_)
 
   # define the cluster attribute
@@ -300,14 +394,17 @@ getGraphBridges <- function(iGraph_, verbose_=FALSE) {
 
 getGraphBottleneck <- function(iGraph_, verbose_=FALSE) {
   articulation_points <- igraph::articulation_points(iGraph_)
-
+  APs <- vertex_attr(graph = iGraph_ , 
+                     name = "name", 
+                     index = articulation_points)
   # print the articulation points
   if (verbose_) {
     print(articulation_points)
     print("Graph bottlenecks calculated successfully!")
   }
 
-  return(articulation_points)
+#  return(articulation_points)
+  return(APs)
 }
 
 #' Function to classify the bottlenecks into the following groups:

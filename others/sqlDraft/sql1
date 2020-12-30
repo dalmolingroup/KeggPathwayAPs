@@ -1,0 +1,4 @@
+select DISTINCT c1.cName
+from compound  as c1
+where c1.cId not in (select DISTINCT cId from interaction) and 
+c1.cname not like 'dr:%';

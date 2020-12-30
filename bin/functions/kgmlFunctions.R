@@ -645,8 +645,10 @@ KGML2Dataframe <- function(kgml_,
                                   MARGIN = 1,
                                   insertRelation))
     
+    #createNodes()
+
     
-    #atualizar a função de inserçaõ de reação em insertEnzReac
+        #atualizar a função de inserçaõ de reação em insertEnzReac
     #insert compound information
     
     
