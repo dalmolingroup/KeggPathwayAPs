@@ -80,7 +80,10 @@ loadDependencies <- function(){
     install.packages("tidyverse", repos = "http://cran.us.r-project.org")
   library(tidyverse) 
   
-
+  # doParallel
+  if (!requireNamespace("doParallel", quietly = TRUE))
+    install.packages("doParallel", repos = "http://cran.us.r-project.org")
+  library(doParallel)
   
   #BiocManager::install("Rgraphviz")
   #BiocManager::install("RBGL")
@@ -93,3 +96,4 @@ loadDependencies <- function(){
   source(file.path(funcDir,"dbFunctions.R"))
   
 }
+

@@ -29,7 +29,7 @@ createDB <- function(dbTemplate, dbFile, skip = T){
     cat("Skiping database creation... \n\n")
     return(0)
   }
-  
+  cat("Creating the database. Please wait... \n\n")
   command<-paste("cat ",dbTemplate,
                  " | sqlite3 ", dbFile)
   system(command)
@@ -703,6 +703,9 @@ createNodes <- function(){
         insertEdges)
   
   rm(counter, total)
+  
+  createNodeTable()
+  
 }
 
 
@@ -761,8 +764,8 @@ searchValue <- function(table, fields, values){
       sql<- paste0(sql,' and ')
     }
   }
-  sql
     resQuery <- dbGetQuery(dbCon,sql)
+    #cat(sql,' ',nrow(resQuery),'\n')
     if(nrow(resQuery)==0){
       return(0)
     }else{
@@ -776,6 +779,8 @@ prepareReacAssos <- function(){
   resQuery <- dbExecute(dbCon,sql)
   sql <- "DELETE FROM nodeAlias"
   resQuery <- dbExecute(dbCon,sql)
+  sql <- "DELETE FROM nodes"
+  resQuery <- dbExecute(dbCon,sql)
   sql <- "DELETE FROM edges"
   resQuery <- dbExecute(dbCon,sql)
   sql <- "DELETE FROM fakeNode"
@@ -785,9 +790,15 @@ prepareReacAssos <- function(){
   
   
   sql <- "INSERT INTO reactionAssociation
-          SELECT DISTINCT rId, 0
+          SELECT DISTINCT rId, rId
           FROM reaction;"
   resQuery <- dbExecute(dbCon,sql)
+}
+
+prepareNodeByOrgs <- function(){
+  #prepare the table reactionAssociation to receive data
+  # sql <- "DELETE FROM nodebyorgs"
+  # resQuery <- dbExecute(dbCon,sql)
 }
 
 #reactList2<-reactList[reactList$rId1=="  97",]
@@ -806,8 +817,8 @@ insertReacList <- function(reactList2){
                     where rId = ", reactList2[idx]," and 
                     mainRId != 0;")
       resQuery <- dbGetQuery(dbCon,sql)
-      if(nrow(resQuery) > 0){
-        cat("Reaction", reactList2[idx], 'already processed. Overwriting!')
+      if(resQuery[1,1] != resQuery[1,2]){
+        cat("Reaction", reactList2[idx], 'already processed. Overwriting\n!')
       }
       sql<-paste0('UPDATE reactionAssociation
           SET mainRId = ',reactList2[2],'
@@ -822,7 +833,7 @@ insertEnzymeAssos<-function(){
   
 }
 
-# reactList2<-reactList[4164,] #debug
+# reactList2<-reactList[78,] #debug
 # insertEdges(reactList2)
 #reactList2<-reactList[reactList$cpd==" I s1021 I s1022 I p835",]
 insertEdges <- function(reactList2){
@@ -856,7 +867,6 @@ insertEdges <- function(reactList2){
                     enzReac as er on er.eId = e.eId
                 WHERE er.rId in (', reacts,')
                 order by eName')
-
   eNames<- dbGetQuery(dbCon,sql)
   if(nrow(eNames) == 0 ){
     cat(file = logFile,'error in ',nId, reactList2,'\n',append = T)
@@ -887,6 +897,7 @@ insertEdges <- function(reactList2){
     nName<-paste0(nName,"+")
   }
   repName<-checkNewName(name = nName,
+                        table = 'edges',
                        type = 'n')
   if(repName > 0){
     nName <- paste0(nName,"_",repName)
@@ -897,6 +908,7 @@ insertEdges <- function(reactList2){
     rName<-paste0(rName,"+")
   }
   repName<-checkNewName(name = rName,
+                        table = 'edges',
                         type = 'r')
   if(repName > 0){
     rName <- paste0(rName,"_",repName)
@@ -910,6 +922,7 @@ insertEdges <- function(reactList2){
                 eNames[idx,1],
                 ',"e")')
     resQuery <- dbExecute(dbCon,sql)
+    
   }
   for(idx in 1:nrow(rNames)){
     sql<-paste0('INSERT INTO nodeAlias
@@ -1327,11 +1340,11 @@ keggErrorsFix <- function(){
   }
   
   #enzymes reactions erros
-  sql<- 'INSERT INTO enzReac VALUES(3, 2824);'
+  sql<- 'INSERT INTO enzReac VALUES(3, 2825);'
   resQuery <- dbExecute(dbCon,sql) 
   sql<- 'INSERT INTO enzReac VALUES(123, 183);'
   resQuery <- dbExecute(dbCon,sql) 
-  sql<- 'INSERT INTO enzReac VALUES(345, 470);'
+  sql<- 'INSERT INTO enzReac VALUES(345, 471);'
   resQuery <- dbExecute(dbCon,sql) 
   
   
@@ -1455,20 +1468,8 @@ getEdgesFromPath <- function(pathway){
 getGraphFromPath<-function(pathway,
                     removeFake = T,
                     auxInfo = F){
-  closeDb <- F
-  if(!exists("dbCon")){
-    closeDb <- T
-    dbDir<<-file.path(dirBase,"data","database")
-    dbFile<<-file.path(dbDir,"dictionary.db")
-    #conect and test dictionary
-    dbCon <<- dbConnect(RSQLite::SQLite(), dbFile)
-  }else if(!dbIsValid(dbCon)){
-    closeDb <- T
-    dbDir<<-file.path(dirBase,"data","database")
-    dbFile<<-file.path(dbDir,"dictionary.db")
-    #conect and test dictionary
-    dbCon <<- dbConnect(RSQLite::SQLite(), dbFile)
-  }    
+  closeDb <<- F
+  createDbConnection()
   #get edges from path
   edges<-getEdgesFromPath(pathway = pathway)
   
@@ -1901,14 +1902,24 @@ removeFakeNodes<-function(){
 }
 
 checkNewName <- function(name,
+                         table,
                          type){
-  if(!type %in% c('n','r')){
-    stop('Use "n" for node name, and "r"for reaction name')
+  if(table == 'edges'){
+    if(!type %in% c('n','r')){
+      stop('Use "n" for node name, and "r" for reaction name')
+    }
+    sql <- paste0('SELECT COUNT(*) as qtd
+          FROM ',table,
+                  ' WHERE ',type,'Name = "', name,'";')
+  }else if (table == 'nodes'){
+    if(!type %in% c('e','r')){
+      stop('Use "e" for enzyme name, and "r" for reaction name')
+    }
+    sql <- paste0('SELECT COUNT(*) as qtd
+          FROM ',table,
+          ' WHERE ',type,'Name = "', name,'";')
+    
   }
-  sql <- paste0('SELECT COUNT(*) as qtd
-          FROM edges
-          WHERE ',type,'Name = "', name,'";')
-  
   return(dbGetQuery(dbCon,sql)[1,1])
 }
 
@@ -1981,6 +1992,177 @@ getPIdFromName <- function(pathway){
   }
   return(pId)
 }
+
+createNodeTable <- function(){
+  sql<- 'SELECT DISTINCT nId 
+        FROM nodeAlias
+        ORDER BY nId'
+  nodes <- dbGetQuery(dbCon,sql)[,1]
+  
+  counter <<- 1
+  total <<- length(nodes)
+  idx<-3
+  for (idx in 1:total) {
+    cat("Inserting node [",counter,"of",total,"]\n")
+    counter<<-counter+1
+    
+    sql <- paste0(
+            'SELECT eName
+            FROM nodeAlias as na INNER JOIN
+            	enzime as e on na.childId = e.eId
+            WHERE type = "e" AND
+            		na.nId = ', nodes[idx],
+            ' ORDER BY eName')
+    eNames <- dbGetQuery(dbCon,sql)[,1]
+    eName <- eNames[1]
+    if(length(eNames)>1){
+      eName<-paste0(eName,"+")
+    }
+    eNameTmp <- eName
+    counter2 <- 1
+    repeat{
+      repName<-checkNewName(name = eNameTmp,
+                            table = 'nodes',
+                            type = 'e')
+      if(repName == 0){
+        break
+      }
+      eNameTmp <- paste0(eName,"_",counter2)
+      counter2 <- counter2 + 1
+      # cat(eNameTmp,'\n')
+    }
+    eName <- eNameTmp
+
+    sql <- paste0(
+      'SELECT rName
+            FROM nodeAlias as na INNER JOIN
+            	reaction as r on na.childId = r.rId
+            WHERE type = "r" AND
+            		na.nId = ', nodes[idx],
+      ' ORDER BY rName')
+    rNames <- dbGetQuery(dbCon,sql)[,1]
+    rName <- rNames[1]
+    if(length(rNames)>1){
+      rName<-paste0(rName,"+")
+    }
+    repeat{
+      repName<-checkNewName(name = rName,
+                            table = 'nodes',
+                            type = 'r')
+      if(repName == 0){
+        break
+      }
+      rName <- paste0(rName,"*")
+    }
+    sql <- paste0('INSERT INTO nodes
+                  VALUES (',
+                  nodes[idx],',"',
+                  eName,'","',
+                  rName,'");')
+    resQuery <- dbExecute(dbCon,sql)
+  }
+  
+}
+
+
+createDbConnection <- function(){
+  if(!exists("dbCon")){
+    closeDb <<- T
+    dbDir<<-file.path(dirBase,"data","database")
+    dbFile<<-file.path(dbDir,"dictionary.db")
+    #conect and test dictionary
+    dbCon <<- dbConnect(RSQLite::SQLite(), dbFile)
+  }else if(!dbIsValid(dbCon)){
+    closeDb <<- T
+    dbDir<<-file.path(dirBase,"data","database")
+    dbFile<<-file.path(dbDir,"dictionary.db")
+    #conect and test dictionary
+    dbCon <<- dbConnect(RSQLite::SQLite(), dbFile)
+  }    
+}
+
+
+getPathInfo <- function(pathwayinfo, 
+                        orgName){
+    table <- "path"
+    fields <- "pName"
+    
+    pName<- sub(pattern = "path:",
+                replacement = '', 
+                x=pathwayinfo$name)
+    pNameEC <- sub(pattern = orgName,
+                 replacement = 'ec',
+                 x = pName)
+    pDesc<-pathwayinfo$title
+    pImage<-pathwayinfo$image
+    pLink <- pathwayinfo$link
+    
+    values<-paste0('"',pNameEC,'"')
+    
+    #pathway exists?
+    nextId <- searchValue(table, fields, values)
+    if(nextId == 0 ){ # Not Exists
+      stop("Pathway ", pName,' not found!')
+    }
+    return(list(nextId, pName))
+    
+}
+
+
+#reaction<-as.vector(reactionsRef[2,]) #debug
+insertReactionOrg<-function(reaction){
+  blFile <- file.path(dbDir,"blacklist")
+  blackList<-read.csv(file = blFile,
+                      header = T, 
+                      stringsAsFactors =F)
+  table <- "reaction"
+  fields <- c("rName","rReversible")
+  rName <- as.character(reaction["rName"])
+  rType <- as.character(reaction["rType"])
+  if(rName %in% blackList$Reaction){
+    rType <- blackList$Reversible[blackList$Reaction == rName]
+  }else{
+    rType <- ifelse(rType == 'reversible', 1,0)
+  }
+  oldId<-reaction["rId"]
+  pId <- reaction["pId"]
+  org <- reaction["org"]
+  
+  values<-c(paste0('"',rName,'"'),
+            paste0('"',rType,'"'))
+  
+  #reaction exists?
+  nextId <- searchValue(table, fields, values)
+  if(nextId ==0 ){ # Not Exists
+    cat("Reaction ",rName," not found -",currentFile,"\n")
+    cat(file = logFile,"Reaction ",rName," not found -",currentFile,"\n",append = T)
+    return(0)
+  }
+  sql <- paste0('SELECT mainRId
+                FROM reactionAssociation
+                WHERE rId = ', nextId,';')
+  nId <- dbGetQuery(dbCon,sql)[,1]
+
+  table <- "nodebyorgs"
+  fields <- c("nId","pId","org")
+  values<-c(paste0('"',nId,'"'),
+            paste0('"',pId,'"'),
+            paste0('"',org,'"'))
+  exist <- searchValue(table, fields, values)
+  if(exist == 0 ){ # Not Exists
+    sql <- paste0('INSERT INTO nodebyorgs
+                    VALUES (',
+                  nId,',',
+                  pId,',"',
+                  org,'");')
+    #cat(sql,' ',rName,' ',exist,'\n')
+    resQuery <- dbExecute(dbCon,sql) 
+    
+  }
+
+}
+
+
 #FIM ----
 # searchValue <- function(table, field, value, pId = NA){
 #   if(is.na(pId)){
