@@ -2200,6 +2200,31 @@ getOrgCounts <- function(){
   return(orgCounts)
 }
 
+getAPCountByOrg <- function(orgs){
+  dbCon <- createDbConnection()
+
+  orgCount <- length(orgs)
+
+  condition <-paste0(orgs, collapse = '\',\'')
+  condition <- paste0('\'',condition,'\'')
+  
+  sql <- paste0(
+    'SELECT p.pName, no.pId, n.eName, no.nId, nm.isAP, count(*) as occurrences
+      FROM nodebyorgs as no INNER JOIN
+      nodemetric as nm on nm.pId = no.pId AND
+      nm.nId = no.nId INNER JOIN
+      nodes as n on n.nId = nm.nId INNER JOIN
+      path as p on p.pId = no.pId
+      WHERE org in (',condition,')
+      GROUP BY no.nId, no.pId
+      ORDER BY no.pId, no.nId')
+  APCounts <- dbGetQuery(dbCon,sql)
+  dbDisconnect(dbCon)
+  # Remove proteins with zero occurrence
+  APCounts$percentage <- APCounts$occurrences/orgCount
+  APCounts$total<- orgCount
+  return(APCounts)
+}
 #FIM ----
 # searchValue <- function(table, field, value, pId = NA){
 #   if(is.na(pId)){

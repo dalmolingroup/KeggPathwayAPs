@@ -396,10 +396,22 @@ analiseData <- function(skip = T){
   
   #get list of organisms that have 
   #a sufficient number of enzymes
-  orgs<-enzymeDistrib(sdFactor = 1, 
+  orgs<-enzymeDistrib(sdFactor = NA, 
                       quiet = F,
                       plot = T,
                       save = T)
+  #get Counts of APs and Non APs, based in an org list
+  apCounts <- getAPCountByOrg(orgs = orgs)
+  #plot the heatmap (figure 4A)
+  plotHeatMap(apCounts = apCounts,
+              save = T)
+  
+  #plot binomial graphic
+  plotBinomial(apCounts = apCounts,
+               p_value = 0.05,
+               interval = 0.1,
+               save = T)
+
   
   
 }
