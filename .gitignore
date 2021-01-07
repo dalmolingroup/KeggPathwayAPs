@@ -1,0 +1,5 @@
+data/database/dictionary.db
+!data/kgml/ec
+!data/kgml/hsa
+!data/kgml/mmu
+data/kgml/*

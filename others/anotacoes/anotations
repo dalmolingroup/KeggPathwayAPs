@@ -72,6 +72,19 @@ Pelo KEGG eu tenho como identificar um nó de 3 maneiras, por ordem de geração
         
 path 40
     3.1.1.110 ausente no xml
-
+    
+    adicionei
+        <entry id="88" name="3.1.1.110" type="enzyme" reaction="rn:R02427"
+            link="http://www.kegg.jp/dbget-bin/www_bget?3.1.1.110">
+            <graphics name="3.1.1.110" fgcolor="#000000" bgcolor="#BFFFBF"
+             type="rectangle" x="205" y="692" width="46" height="17"/>
+        </entry>
+             
+        <reaction id="1000" name="rn:R02427" type="reversible">
+            <substrate id="143" name="cpd:C02266"/>
+            <product id="150" name="cpd:C00502"/>
+        </reaction>
+        
+        Atentar para os ids dos compounds ou a associação não ficará correta
 Path ec00333
     dados insuficientes

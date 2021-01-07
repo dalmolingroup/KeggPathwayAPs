@@ -82,6 +82,11 @@ createDB(dbTemplate = dbTemplate,
          dbFile = dbFile,
          skip = T)
 
+#to use a pre processed database execute this
+# WARNING: all data overwrite by a previous version
+unpackDB(dbDir = dbDir,
+         skip = T)
+
 # read xml files and load data to database
 generateDataFromKGML(dirBase = dirBase,
                      dataType = 'ec',
@@ -95,7 +100,7 @@ createGraphMetrics(skip = T)
 # read xml files from organisms and associate load data with ec networks
 generateDataFromKGML(dirBase = dirBase,
                      dataType = 'orgs',
-                     skip = F)
+                     skip = T)
 
 showGraph(pathway = "ec00040", removeFake = T,label = "enzyme")
 

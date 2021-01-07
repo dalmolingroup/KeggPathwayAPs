@@ -36,6 +36,29 @@ createDB <- function(dbTemplate, dbFile, skip = T){
   
 }
 
+unpackDB <- function(dbDir = dbDir,
+         skip = T){
+  if(skip){
+    cat("Skiping database unpacking... \n\n")
+    return(0)
+  }
+  dbFile <- file.path(dbDir,'dictionary.db')
+  cat("Removing the old database. Please wait... \n")
+  if(file.exists(dbFile)){
+    file.remove(dbFile)   
+  }else{
+    cat("Old database not found... \n")
+  }
+  tarFile <- file.path(dbDir,'dictionary.db.tar.bz2')
+  if(!file.exists(tarFile)){
+    stop('File ', tarFile, ' not found...')    
+  }
+  cat("Unpacking the database. Please wait... \n\n")
+  command<-paste0('tar -C ', dbDir,' -xjf ',tarFile)
+  system(command)
+  
+  
+}
 
 getNextId <- function(table){
   # ids for each table
@@ -2079,6 +2102,8 @@ createDbConnection <- function(){
     #conect and test dictionary
     dbCon <<- dbConnect(RSQLite::SQLite(), dbFile)
   }    
+  
+  return(dbCon)
 }
 
 
@@ -2130,7 +2155,6 @@ insertReactionOrg<-function(reaction){
   
   values<-c(paste0('"',rName,'"'),
             paste0('"',rType,'"'))
-  
   #reaction exists?
   nextId <- searchValue(table, fields, values)
   if(nextId ==0 ){ # Not Exists
@@ -2147,14 +2171,15 @@ insertReactionOrg<-function(reaction){
   fields <- c("nId","pId","org")
   values<-c(paste0('"',nId,'"'),
             paste0('"',pId,'"'),
-            paste0('"',org,'"'))
+            paste0('\'',org,'\''))
+  
   exist <- searchValue(table, fields, values)
   if(exist == 0 ){ # Not Exists
     sql <- paste0('INSERT INTO nodebyorgs
                     VALUES (',
                   nId,',',
-                  pId,',"',
-                  org,'");')
+                  pId,',\'',
+                  org,'\');')
     #cat(sql,' ',rName,' ',exist,'\n')
     resQuery <- dbExecute(dbCon,sql) 
     
@@ -2162,6 +2187,18 @@ insertReactionOrg<-function(reaction){
 
 }
 
+getOrgCounts <- function(){
+  dbCon <- createDbConnection()
+  sql <- 'select org, count(*) as count
+          from nodebyorgs
+          GROUP by org'
+  
+  orgCounts <- dbGetQuery(dbCon,sql)
+  
+  dbDisconnect(dbCon) 
+  
+  return(orgCounts)
+}
 
 #FIM ----
 # searchValue <- function(table, field, value, pId = NA){

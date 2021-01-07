@@ -80,10 +80,10 @@ loadDependencies <- function(){
     install.packages("tidyverse", repos = "http://cran.us.r-project.org")
   library(tidyverse) 
   
-  # doParallel
-  if (!requireNamespace("doParallel", quietly = TRUE))
-    install.packages("doParallel", repos = "http://cran.us.r-project.org")
-  library(doParallel)
+  # ggplot
+  if (!requireNamespace("ggplot2", quietly = TRUE))
+    install.packages("ggplot2", repos = "http://cran.us.r-project.org")
+  library(ggplot2)
   
   #BiocManager::install("Rgraphviz")
   #BiocManager::install("RBGL")

@@ -3,17 +3,17 @@ DROP VIEW IF EXISTS fCompound ;
 drop VIEW IF EXISTS wNamesSubsProd;
 DROP VIEW IF EXISTS wAllNodes;
 
+DROP TABLE IF EXISTS nodebyorgs;
 DROP TABLE IF EXISTS nodeMetric;
+DROP TABLE IF EXISTS nodes;
 DROP TABLE IF EXISTS nodeAlias;
-DROP TABLE IF EXISTS "reactionAssociation";
-DROP TABLE IF EXISTS "nodesOnPath" ;
+DROP TABLE IF EXISTS reactionAssociation;
 DROP TABLE IF EXISTS interaction ;
-DROP TABLE IF EXISTS "enzPathNode" ;
-DROP TABLE IF EXISTS "subsProd" ;
-DROP TABLE IF EXISTS "enzReac" ;
-DROP TABLE IF EXISTS "enzOnPath" ;
-DROP TABLE IF EXISTS "reacOnPath" ;
-DROP TABLE IF EXISTS "compOnPath" ;
+DROP TABLE IF EXISTS subsProd ;
+DROP TABLE IF EXISTS enzReac ;
+DROP TABLE IF EXISTS enzOnPath ;
+DROP TABLE IF EXISTS reacOnPath ;
+DROP TABLE IF EXISTS compOnPath ;
 DROP TABLE IF EXISTS reaction ;
 DROP TABLE IF EXISTS compound ;
 DROP TABLE IF EXISTS enzime ;
@@ -22,7 +22,7 @@ DROP TABLE IF EXISTS path ;
 DROP TABLE IF EXISTS fakeEdge;
 DROP TABLE IF EXISTS fakeNode;
 
-CREATE TABLE "fakeEdge" (
+CREATE TABLE fakeEdge (
 	"nextId" integer
 );
 
@@ -35,8 +35,11 @@ CREATE TABLE edges (
 	subs integer NOT NULL,
 	prod integer NOT NULL,
 	type text NOT NULL,
-	reversible integer NOT NULL
+	reversible integer NOT NULL,
+	CONSTRAINT "edgFk" FOREIGN KEY ("nId")
+    REFERENCES reaction ("rId")
 );
+
 
 CREATE TABLE enzime (
 	"eId" integer NOT NULL,
@@ -53,18 +56,6 @@ CREATE TABLE path (
 	"pImage" text,
 	"pLink" text,
 	CONSTRAINT map_pk PRIMARY KEY ("pId")
-
-);
-
-CREATE TABLE "nodesOnPath" (
-	"nId" integer,
-	"pId" integer,
-	x integer,
-	y integer,
-	FOREIGN KEY ("nId")
-    REFERENCES nodes ("nId"),
-    FOREIGN KEY ("pId")
-    REFERENCES path ("pId")
 );
 
 CREATE TABLE reaction (
@@ -105,17 +96,6 @@ CREATE TABLE interaction (
     FOREIGN KEY ("cId")
     REFERENCES compound ("cId")
 );
-
-CREATE TABLE "enzPathNode" (
-	"nId" integer NOT NULL,
-	"mId" integer NOT NULL,
-	"eId" integer NOT NULL,
-	FOREIGN KEY ("nId")
-    REFERENCES nodes ("nId"),
-    FOREIGN KEY ("mId")
-    REFERENCES path ("pId")
-);
-
 
 CREATE TABLE "subsProd" (
 	"rId" integer NOT NULL,
@@ -172,18 +152,29 @@ CREATE TABLE "compOnPath" (
 CREATE TABLE "reactionAssociation" (
 	"rId" integer NOT NULL,
 	"mainRId" integer NOT NULL,
+	CONSTRAINT "raPk" PRIMARY KEY ("rId")
 	FOREIGN KEY ("rId")
     REFERENCES reaction ("rId")
 );
 
+CREATE TABLE "nodes" (
+	"nId" integer NOT NULL,
+	"eName" text NOT NULL,
+	"rName" text NOT NULL,
+	CONSTRAINT nodes_pk PRIMARY KEY ("nId"),
+	CONSTRAINT "nFk" FOREIGN KEY ("nId")
+    REFERENCES reaction ("rId") 
+);
 
 CREATE TABLE "nodeAlias" (
 	"nId" integer NOT NULL,
 	"childId" integer NOT NULL,
-	type text NOT NULL
+	type text NOT NULL,
+	CONSTRAINT "nnmFk" FOREIGN KEY ("nId")
+    REFERENCES reaction ("rId")
 );
 
-CREATE TABLE nodeMetric (
+CREATE TABLE nodemetric (
 	"nId" integer NOT NULL,
 	"pId" integer NOT NULL,
 	"isAP" integer NOT NULL,
@@ -200,12 +191,23 @@ CREATE TABLE nodeMetric (
 	"eigenvScore" real NOT NULL,
 	"authScore" real NOT NULL,
 	"hubScore" real NOT NULL,
-	CONSTRAINT map_pk PRIMARY KEY ("nId","pId"),
+	CONSTRAINT nm_pk PRIMARY KEY ("nId","pId"),
 	FOREIGN KEY ("nId")
-    REFERENCES nodeAlias ("nId"),
+    REFERENCES nodes ("nId"),
     FOREIGN KEY ("pId")
     REFERENCES path ("pId")
 );
+
+CREATE TABLE nodebyorgs (
+	"nId" integer NOT NULL,
+	"pId" integer NOT NULL,
+	"org" text NOT NULL,
+	CONSTRAINT "nodeByOrgs_pk" PRIMARY KEY ("nId","pId","org"),
+	CONSTRAINT "nboFk" FOREIGN KEY ("pId","nId")
+    REFERENCES nodemetric ("nId","pId")
+
+);
+
 
 
 PRAGMA foreign_keys=OFF;

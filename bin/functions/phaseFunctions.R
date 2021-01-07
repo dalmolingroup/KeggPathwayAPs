@@ -182,7 +182,7 @@ generateDataFromKGML <- function(dirBase,
     #******************************
     
     #clean nodebyorgs table
-    prepareNodeByOrgs()
+    #prepareNodeByOrgs()
     logFile <<- file.path(dirBase,"log","phase5.log")
     
     cat("Starting organism pathways processing... \n\n")
