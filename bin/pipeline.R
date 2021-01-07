@@ -102,6 +102,8 @@ generateDataFromKGML(dirBase = dirBase,
                      dataType = 'orgs',
                      skip = T)
 
+analiseData(skip = F)
+
 showGraph(pathway = "ec00040", removeFake = T,label = "enzyme")
 
 showGraphOld(pathway = "ec00040", removeFake = T)
