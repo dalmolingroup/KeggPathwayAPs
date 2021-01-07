@@ -85,6 +85,22 @@ loadDependencies <- function(){
     install.packages("ggplot2", repos = "http://cran.us.r-project.org")
   library(ggplot2)
   
+  if (!require("gridExtra")) {
+    install.packages("gridExtra", repos = "http://cran.us.r-project.org")
+  }
+  if (!require("grid")) {
+    install.packages("grid", repos = "http://cran.us.r-project.org")
+  }
+  if (!require("lattice")) {
+    install.packages("lattice", repos = "http://cran.us.r-project.org")
+  }
+  if (!require("cowplot")) {
+    install.packages("cowplot", repos = "http://cran.us.r-project.org")
+  }
+  if (!require("reshape2")) {
+    install.packages("reshape2", repos = "http://cran.us.r-project.org")
+  }
+  
   #BiocManager::install("Rgraphviz")
   #BiocManager::install("RBGL")
   
@@ -94,6 +110,7 @@ loadDependencies <- function(){
   source(file.path(funcDir,"helperFunctions.R"))
   source(file.path(funcDir,"phaseFunctions.R"))
   source(file.path(funcDir,"dbFunctions.R"))
+  source(file.path(funcDir,"plotFunctions.R"))
   
 }
 
