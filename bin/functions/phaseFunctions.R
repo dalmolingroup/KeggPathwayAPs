@@ -50,12 +50,12 @@ downloadKGML <- function(dirBase,
   system(command)
 }
 
-# Phase 02 ----
+# Phase 02 and 05 ----
 # Analise XML files from KEGG and transform it in usable information
 # clean redundant data 
 # create unique node IDs
 # create a dictionary from ec files
-# save a new filtered XML file
+# correlate orgs information with ec information
 # save base files for network metrics
 generateDataFromKGML <- function(dirBase,
                         dataType = "ec",
@@ -332,6 +332,10 @@ createNodesFromEC <- function(dirBase,
   dbDisconnect(dbCon)
 }
 
+# Phase 04 ----
+# Create the node metrics based on ec maps
+# insert nodes information for each path
+# save data inside sqlite database
 createGraphMetrics <- function(pathways = 'all',
                                skip = T){
   
@@ -377,5 +381,25 @@ createGraphMetrics <- function(pathways = 'all',
     count <- count +1
   }
   dbDisconnect(dbCon)
+  
+}
+
+# Phase 06 ----
+# Calculate statistics 
+# plot different graphics
+analiseData <- function(skip = T){
+  
+  if(skip){
+    cat("Skiping data analisys... \n\n")
+    return(0)
+  }
+  
+  #get list of organisms that have 
+  #a sufficient number of enzymes
+  orgs<-enzymeDistrib(sdFactor = 1, 
+                      quiet = F,
+                      plot = T,
+                      save = T)
+  
   
 }
