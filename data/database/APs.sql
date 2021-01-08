@@ -250,3 +250,12 @@ select * from compound
 UNION
 select * from fakeNode;
 
+CREATE VIEW pathEnzReaction as
+SELECT DISTINCT p.pName,p.pId, e.eName, e.eId, r.rName, r.rId
+FROM path as p INNER JOIN
+	enzOnPath as ep on ep.pId = p.pId INNER JOIN
+	enzime as e on e.eId = ep.eId INNER JOIN
+	enzReac as er on er.eId = e.eId INNER JOIN
+	reaction as r on r.rId = er.rId INNER JOIN
+	reacOnPath as rp on rp.pId = p.pId AND 
+					rp.rId = r.rId

@@ -205,7 +205,8 @@ plotHeatMap <- function(apCounts,
 plotBinomial <- function(apCounts, 
                          p_value = 0.01,
                          interval = 0.10,
-                         save = T){
+                         save = T,
+                         quiet = T){
   
   #**************************************************************************##
   # Apply a normalization:                                              #
@@ -340,6 +341,7 @@ plotBinomial <- function(apCounts,
           legend.position = 'none') + labs(fill = "Range group")
   
   plot(g1)
+  # save ----
   if(save){
     fileName=file.path(dirFig,'binomial.pdf')
     ggsave(filename = fileName, 
@@ -347,6 +349,21 @@ plotBinomial <- function(apCounts,
            device = "pdf",
            width = 11,height = 8,
            dpi=600)
+  }
+  # quiet ----
+  if(!quiet){
+    cat('range\tAP\tnAP\tp corr\n')
+    idx=1
+    for (idx in 1:nrow(distribution)) {
+      cat(distribution$ini[idx],'\t',
+          distribution$AP[idx],'\t',
+          distribution$nAP[idx],'\t',
+          distribution$pCor[idx],'\n')
+    }
+    cat('p-val:', p_value,'\t',
+        nrow(distribution),'stripes\n',
+        'AP/nAP ratio:',proporcao)
+    
   }
   
 }
