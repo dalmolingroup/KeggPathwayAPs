@@ -137,17 +137,22 @@ enzymeDistrib <- function(sdFactor = NA,
 
 
 plotHeatMap <- function(apCounts,
+                        normalized = T,
                         save = T){
-  
+  if(normalized){
+    apCounts$percent<-apCounts$nPercent
+  }else{
+    apCounts$percent<-apCounts$percentage
+  }
   step = 0.0005
   faixas <- list()
   idx <- 1
   for (faixa in seq(0, 0.95, step)) {
-    Ap <- nrow(apCounts[apCounts$percentage > faixa &
-                           apCounts$percentage <= faixa + .05 &
+    Ap <- nrow(apCounts[apCounts$percent > faixa &
+                           apCounts$percent <= faixa + .05 &
                            apCounts$isAP == 1, ])
-    nAp <- nrow(apCounts[apCounts$percentage > faixa & 
-                            apCounts$percentage <= faixa + 0.5 &
+    nAp <- nrow(apCounts[apCounts$percent > faixa & 
+                            apCounts$percent <= faixa + 0.5 &
                             apCounts$isAP == 0, ])
     
     faixas[[idx]]<-data.frame(percent = faixa + 0.05,
@@ -202,104 +207,28 @@ plotHeatMap <- function(apCounts,
            dpi=600)
   }}
 
-plotBinomial <- function(apCounts, 
+plotBinomial <- function(distribution,
+                         proportion,
+                         alternative = 'g',
                          p_value = 0.01,
-                         interval = 0.10,
                          save = T,
                          quiet = T){
   
-  #**************************************************************************##
-  # Apply a normalization:                                              #
-  # 100% of occurrence in a pathway can be compared with 50% of other pathway #
-  #**************************************************************************##
-  
-  # Get the unique pathways
-  uniquePathways <- unique(apCounts$pName)
-  
-  # Calculates the normalized frequency
-  for (item in uniquePathways) {
-    # Max frequency in a pathway
-    pathwayMaxFrequency <- max(apCounts$percentage[apCounts$pName==item])
-    
-    # Min frequency in a pathway
-    pathwayMinFrequency <- min(apCounts$percentage[apCounts$pName==item])
-    
-    # Normalized frequency for each protein
-    apCounts$nPercent[apCounts$pName==item] <-
-      (apCounts$percentage[apCounts$pName==item]-pathwayMinFrequency)/
-      (pathwayMaxFrequency-pathwayMinFrequency)
-  }
-  
-  # Fix for NAN cases (when min and max frequency have the same values)
-  apCounts$nPercent[is.nan(apCounts$nPercent)] <- apCounts$percentage[is.nan(apCounts$nPercent)]/100
-  
-  # Filter dataSet from proteins with ZERO frequency
-  apCounts <- apCounts[!apCounts$occurrences==0,]
-  
-  # Order the dataSet
-  apCounts <- apCounts[order(apCounts$nPercent, decreasing = T),]
-  
-  
-  #*****************************************##
-  # Generate the hypergeometric distribution #
-  #*****************************************##
-  
-  # Count the bottlenecks and non-bottlenecks
-  countsBase <- c(APs=nrow(apCounts[apCounts$isAP ==1,]), 
-                  nAPs=nrow(apCounts[apCounts$isAP !=1,]))
-  
-  proporcao<- countsBase[1]/(countsBase[1]+countsBase[2])
-  
-  ranges<-seq(0,1.1,interval)
-  
-  # Create a dataFrame for the result
-  distribution <- data.frame(ini=0,
-                             range=0,
-                             AP=0,
-                             nAP=0,
-                             binom=NA,
-                             stringsAsFactors = F)
-  # Loop over all dataSet
-  idx=100
-  for (idx in 1:(length(ranges)-1)) {
-    # Set the cumulative range [initVal:range]
-    initVal <- ranges[idx]
-    range<-ranges[idx+1]
-    
-    # Temporaly dataFrame for indexed results
-    countsTop <- data.frame(ini=numeric(),
-                            range=numeric(),
-                            AP=numeric(),
-                            nAP=numeric(),
-                            binom=numeric(),
-                            stringsAsFactors = F)
-    
-    # Retrieve the cumulative proteins
-    top <- apCounts[apCounts$nPercent>=ranges[idx]&
-                      apCounts$nPercent<ranges[idx+1], ]
-    
-    # Number of draws
-    drawn <- nrow(top)
-    
-    # The number of articulation points in the accumulated group
-    btn <- nrow(top[top$isAP == 1,])
-    nbtn <- nrow(top[top$isAP == 0,])
-    
-    if((btn+nbtn) != 0){
-      binom<-binom.test(x = btn,
-                        n = (btn+nbtn),
-                        p = proporcao,
-                        alternative = "g")
+  distribution$binom <- 1
+  for (idx in 1:nrow(distribution)) {
+    AP <- distribution$AP[idx]
+    nAP <- distribution$nAP[idx]
+    if((AP+nAP) != 0){
+      binom<-binom.test(x = AP,
+                        n = (AP+nAP),
+                        p = proportion,
+                        alternative = alternative)
       binom<-binom$p.value
     }else{
       binom<-1
     }
     
-    countsTop[1,] <- t(c(initVal, range-0.001, btn,nbtn,binom))
-
-    # Bind each result
-    distribution <- rbind(distribution, countsTop)
-    initVal <- range+1
+    distribution$binom[idx] <- binom
   }
 
   # Adjust the p-value in order to compensate the accumulated error with
@@ -318,16 +247,16 @@ plotBinomial <- function(apCounts,
     rep('Non-Significative',
         nrow(distribution[distribution$pCor>p_value,]))
   
-  
+  colwidth<-1/nrow(distribution)-(1/(nrow(distribution)*10))
   # Plot the graph
   g1 <- ggplot() + ggtitle("") + # for the main title
     xlab("Range (%)") +
     ylab("Ratio (Articulation point/Total)") +
     geom_col(data = distribution, 
-             aes(x=range-.1, 
+             aes(x=range-.05, 
                  y=(AP/(AP+nAP)), 
                  fill=group), 
-             width=.09) +
+             width=colwidth) +
     geom_hline(yintercept = proporcao, lty=2, col="#E75480") +
     scale_fill_manual(values = c("#ED553B", "#173F5F")) +
     theme_bw() +
@@ -352,21 +281,220 @@ plotBinomial <- function(apCounts,
   }
   # quiet ----
   if(!quiet){
-    cat('range\tAP\tnAP\tp corr\n')
+    cat('range\tAP\tnAP\tp-val\t\tp corr\n')
     idx=1
     for (idx in 1:nrow(distribution)) {
       cat(distribution$ini[idx],'\t',
           distribution$AP[idx],'\t',
           distribution$nAP[idx],'\t',
+          distribution$binom[idx],'\t',
           distribution$pCor[idx],'\n')
     }
     cat('p-val:', p_value,'\t',
         nrow(distribution),'stripes\n',
-        'AP/nAP ratio:',proporcao)
+        'AP/nAP ratio:',proporcao,'\n',
+        'APs:',nrow(apCounts[apCounts$isAP ==1,]),'\t',
+        'nAps:',nrow(apCounts[apCounts$isAP ==0,]),'\n')
     
   }
   
 }
 
+tempTest <- function(apCounts,
+                     pval = 0.05,
+                     save = T){
+  aps<-apCounts$nPercent[apCounts$isAP == 1]
+  aps<-aps[order(aps)]
+  naps<-apCounts$nPercent[apCounts$isAP == 0]
+  naps<-naps[order(naps)]
+  
+  la<-rep('AP',length(aps))
+  ln<-rep('nAP',length(naps))
+  ca<-rep('AP',length(aps))
+  cn<-rep('non AP',length(naps))
+  
+  data <- data.frame(type=c(la,ln),
+                     value = c(aps,naps),
+                     color = c(ca,cn))
+  # violin ----
+  g1<-ggplot(data = data,
+         aes(y=value, 
+             x=type, 
+             #color = color,
+             fill = color))+
+    theme_bw()+
+    xlab("") +
+    ylab("Presence in species") +
+    geom_violin(draw_quantiles = c(0.25, 0.75),
+                linetype = "dashed") +
+    geom_violin(fill="transparent",draw_quantiles = 0.5) +
+    stat_summary(aes(color="mean"),
+                 fun=mean, 
+                 geom="point", 
+                 shape=20, 
+                 size=3, 
+                 fill="red")+
+    scale_fill_manual("",guide=F,
+                      values = c('AP'=alpha('blue',alpha = 0.25),
+                                 'non AP'=alpha('red',alpha = 0.25)))+
+    scale_color_manual("",values = c('mean'='red'))
+  
+  
+    
+  
+  x<-seq(0,length(aps)-1,1)
+  x<-(x/length(aps))
+  data1<-data.frame(y1=aps,x1=x)
+  x<-seq(0,length(naps)-1,1)
+  x<-(x/length(naps))
+  data2<-data.frame(y2=naps,x2=x)
+
+  
+    ggplot()+
+    theme_bw()+
+    geom_line(data = data2,
+              aes(x=x2, y=y2), col='red')+
+    geom_line(data = data1,
+              aes(x=x1, y=y1), col='blue')
+  
+    cat('\n####################################\n\n')
+    print(ks.test(x=aps,
+          y=naps,
+          alternative = 'g'))
+  cat('\n####################################\n\n')
+  print(var.test(aps,naps,alternative = 'g'))
+  cat('\n####################################\n\n')
+  print(wilcox.test(aps, naps,alternative = 't'))
+  
+  p1<-ks.test(data1$y1[data1$y1<.25],
+              data2$y2[data2$y2<.25],
+              alternative = 'l')$p.value
+  p2<-ks.test(data1$y1[data1$y1>=.25&data1$y1<.5],
+              data2$y2[data2$y2>=.25&data2$y2<.5],
+              alternative = 'l')$p.value
+  p3<-ks.test(data1$y1[data1$y1>=.5&data1$y1<.75],
+              data2$y2[data2$y2>=.5&data2$y2<.75],
+              alternative = 'l')$p.value
+  p4<-ks.test(data1$y1[data1$y1>=.75&data1$y1<=1],
+              data2$y2[data2$y2>=.75&data2$y2<1],
+              alternative = 'l')$p.value
+  pLess<-p.adjust(c(p1,p2,p3,p4),method = 'BH')
+  
+  p1<-ks.test(data1$y1[data1$y1<.25],
+              data2$y2[data2$y2<.25],
+              alternative = 'g')$p.value
+  p2<-ks.test(data1$y1[data1$y1>=.25&data1$y1<.5],
+              data2$y2[data2$y2>=.25&data2$y2<.5],
+              alternative = 'g')$p.value
+  p3<-ks.test(data1$y1[data1$y1>=.5&data1$y1<.75],
+              data2$y2[data2$y2>=.5&data2$y2<.75],
+              alternative = 'g')$p.value
+  p4<-ks.test(data1$y1[data1$y1>=.75&data1$y1<=1],
+              data2$y2[data2$y2>=.75&data2$y2<1],
+              alternative = 'g')$p.value
+  pGreat<-p.adjust(c(p1,p2,p3,p4),method = 'BH')
+  plist<-list()
+  idx=1
+  for(idx in 1:4){
+   if(pLess[idx]>pGreat[idx]){
+     p<-pGreat[idx]
+     if(pGreat[idx]<=pval){
+       alt<-'ap>nap'
+     }else{
+       alt<-'ap=nap'
+     }
+   }else{
+     p<-pLess[idx]
+     if(pLess[idx]<=pval){
+       alt<-'ap<nap'
+     }else{
+       alt<-'ap=nap'
+     }
+   }
+    plist[[idx]]<-data.frame(alt=alt,
+                             p=p,
+                             stringsAsFactors = F)
+  }
+  
+  plist<-do.call(rbind,plist)
+  plist$p <-signif(plist$p, digits=3)
+  
+  # ks plot ----
+  g2<-ggplot()+
+    theme_bw()+
+    xlab("Presence in species") +
+    ylab("KS EDCF") +    geom_rect(aes(xmin = 0, xmax = 0.25,
+                  ymin = 0, ymax = 1,
+                  fill = plist$alt[1]),
+              col=alpha("gray",1),lty=3)+
+    geom_rect(aes(xmin = 0.25, xmax = 0.5,
+                  ymin = 0, ymax = 1,
+                  fill = plist$alt[2]),
+              col=alpha("gray",1),lty=3)+
+    geom_rect(aes(xmin = .5, xmax = 0.75,
+                  ymin = 0, ymax = 1,
+                  fill = plist$alt[3]),
+              col=alpha("gray",1),lty=3)+
+    geom_rect(aes(xmin = 0.75, xmax = 1,
+                  ymin = 0, ymax = 1,
+                  fill = plist$alt[4]),
+              col=alpha("gray",1),lty=3)+
+    stat_ecdf(data=data1,
+              aes(y1, color ='AP'),
+              n=50,
+              geom = 'step')+
+    stat_ecdf(data=data2,
+              aes(y2, color ='nAP'),
+              n=50,
+              geom = 'step')+
+    annotate(geom = 'label',
+             x=c(0.125,
+                 0.375,
+                 0.625,
+                 0.875),
+             y=c(.95,
+                 .95,
+                 .95,
+                 .95),
+             label=c(paste0(plist$alt[1],'\np-val: ',plist$p[1]),
+                     paste0(plist$alt[2],'\np-val: ',plist$p[2]),
+                     paste0(plist$alt[3],'\np-val: ',plist$p[3]),
+                     paste0(plist$alt[4],'\np-val: ',plist$p[4])),
+             size = c(3,3,3,3),
+             hjust = c('center',
+                       'center',
+                       'center',
+                       'center'))+
+    scale_fill_manual("",guide=F,
+                      values = c('ap>nap'=alpha('blue',alpha = 0.15),
+                                 'ap<nap'=alpha('red',alpha = 0.15),
+                                 'ap=nap'=alpha('white',0)))+
+    scale_color_manual("",values = c('mean'='red',
+                                     'AP' = 'blue',
+                                     'nAP'= 'red'))
+  
+  
+  plot(g1)
+  # save ----
+  if(save){
+    fileName=file.path(dirFig,'violin.pdf')
+    ggsave(filename = fileName, 
+           plot = g1,
+           device = "pdf",
+           width = 11,height = 8,
+           dpi=600)
+    fileName=file.path(dirFig,'ksTest.pdf')
+    ggsave(filename = fileName, 
+           plot = g2,
+           device = "pdf",
+           width = 11,height = 8,
+           dpi=600)
+  }
+  
+  cat('\n####################################\n\n
+      Segmentated KS test \n')
+  
+  cat('Less:',pLess,'\nGreat',pGreat,'\n')
+}
 
 # FIM ----

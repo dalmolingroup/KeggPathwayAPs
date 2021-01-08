@@ -396,22 +396,69 @@ analiseData <- function(skip = T){
   
   #get list of organisms that have 
   #a sufficient number of enzymes
-  orgs<-enzymeDistrib(sdFactor = NA, 
+  orgs<-enzymeDistrib(sdFactor = 1, 
                       quiet = F,
                       plot = T,
                       save = T)
   #get Counts of APs and Non APs, based in an org list
   apCounts <- getAPCountByOrg(orgs = orgs)
+  options(warn=-1)
+  tempTest(apCounts,pval = 0.05,save = T )
+  
   #plot the heatmap (figure 4A)
   plotHeatMap(apCounts = apCounts,
+              normalized = T,
               save = T)
   
+  distrib<-stratifyAPs(apCounts,
+                       interval = 0.1,
+                       normalized = T)
+  distribution <- distrib[[1]]
+  proportion <- distrib[[2]]
   #plot binomial graphic
-  plotBinomial(apCounts = apCounts,
+  plotBinomial(distribution = distribution,
+               proportion = proportion,
                p_value = 0.05,
-               interval = 0.1,
-               save = T)
-
+               save = F,
+               quiet = F)
+  if(!require(rcompanion)){install.packages("rcompanion")}
+  
+    library(DescTools)
+  library(rcompanion)
+  GTest(distribution[,c(3)],
+        distribution[,c(4)])
+  chisq.test(distribution[,c(3)],
+             distribution[,c(4)])
+  m<-as.matrix(distribution[,c(3,4)],
+            header=TRUE)
+  row.names(m)<-distribution[,c(1)]
+  pairwiseNominalIndependence(m,
+                              fisher = FALSE,
+                              gtest  = T,
+                              chisq  = F,
+                              method = "fdr")
+  
+  maxA<-max(distribution[,c(3)])
+  minA<-min(distribution[,c(3)])
+  distribution$APN<-(distribution[,c(3)]-minA)/(maxA-minA)
+  maxA<-max(distribution[,c(4)])
+  minA<-min(distribution[,c(4)])
+  distribution$nAPN<-(distribution[,c(4)]-minA)/(maxA-minA)
+  
+  t.test(x = distribution[,c(5)],
+         y = distribution[,c(6)])
+  
+  
+  FUN = function(i,j){    
+    chisq.test(matrix(c(Matriz[i,1], Matriz[i,2],
+                        Matriz[j,1], Matriz[j,2]),
+                      nrow=2,
+                      byrow=TRUE))$ p.value
+  }
+  
+  pairwise.table(FUN,
+                 rownames(distribution[,c(3,4)]),
+                 p.adjust.method="none")
   
   
 }

@@ -2209,7 +2209,7 @@ getAPCountByOrg <- function(orgs){
   condition <- paste0('\'',condition,'\'')
   
   sql <- paste0(
-    'SELECT p.pName, no.pId, n.eName, no.nId, nm.isAP, count(*) as occurrences
+    'SELECT p.pName, no.pId, n.eName, no.nId, n.rName, nm.isAP, count(*) as occurrences
       FROM nodebyorgs as no INNER JOIN
       nodemetric as nm on nm.pId = no.pId AND
       nm.nId = no.nId INNER JOIN
@@ -2223,8 +2223,104 @@ getAPCountByOrg <- function(orgs){
   # Remove proteins with zero occurrence
   APCounts$percentage <- APCounts$occurrences/orgCount
   APCounts$total<- orgCount
+  
+  #**************************************************************************##
+  # Apply a normalization:                                              #
+  # 100% of occurrence in a pathway can be compared with 50% of other pathway #
+  #**************************************************************************##
+  
+  # Get the unique pathways
+  uniquePathways <- unique(APCounts$pName)
+  
+  # Calculates the normalized frequency
+  for (item in uniquePathways) {
+    # Max frequency in a pathway
+    pathwayMaxFrequency <- max(APCounts$percentage[APCounts$pName==item])
+    
+    # Min frequency in a pathway
+    pathwayMinFrequency <- min(APCounts$percentage[APCounts$pName==item])
+    
+    # Normalized frequency for each protein
+    APCounts$nPercent[APCounts$pName==item] <-
+      (APCounts$percentage[APCounts$pName==item]-pathwayMinFrequency)/
+      (pathwayMaxFrequency-pathwayMinFrequency)
+  }
+  
+  # Fix for NAN cases (when min and max frequency have the same values)
+  APCounts$nPercent[is.nan(APCounts$nPercent)] <- APCounts$percentage[is.nan(APCounts$nPercent)]/100
+  
   return(APCounts)
 }
+
+stratifyAPs <- function(apCounts,
+                        interval = 0.10,
+                        normalized = T){
+  if(normalized){
+    apCounts$percent<-apCounts$nPercent
+  }else{
+    apCounts$percent<-apCounts$percentage
+  }
+  
+  # Filter dataSet from proteins with ZERO frequency
+  apCounts <- apCounts[!apCounts$occurrences==0,]
+  
+  # Order the dataSet
+  apCounts <- apCounts[order(apCounts$percent, decreasing = T),]
+  
+  
+  #*****************************************##
+  # Generate the stratified     distribution #
+  #*****************************************##
+  
+  # Count the bottlenecks and non-bottlenecks
+  countsBase <- c(APs=nrow(apCounts[apCounts$isAP ==1,]), 
+                  nAPs=nrow(apCounts[apCounts$isAP !=1,]))
+  
+  proportion<- countsBase[1]/(countsBase[1]+countsBase[2])
+  
+  ranges<-seq(0,1,interval)
+  
+  # Create a dataFrame for the result
+  distribution <- list()
+  # Loop over all dataSet
+  idx=1
+  for (idx in 1:(length(ranges)-1)) {
+    # Set the cumulative range [initVal:range]
+    initVal <- ranges[idx]
+    
+    # Retrieve the cumulative proteins
+    if(idx == length(ranges)-1){
+      top <- apCounts[apCounts$percent>=ranges[idx]&
+                        apCounts$percent<=ranges[idx+1], ]
+      range<-ranges[idx+1]
+    }else{
+      top <- apCounts[apCounts$percent>=ranges[idx]&
+                        apCounts$percent<ranges[idx+1], ]
+      range<-ranges[idx+1]-0.001
+    }
+    # Number of draws
+    drawn <- nrow(top)
+    
+    # The number of articulation points in the accumulated group
+    AP <- nrow(top[top$isAP == 1,])
+    nAP <- nrow(top[top$isAP == 0,])
+    if(AP+nAP != drawn ){
+      stop('Number of AP + nAP doesn\'t match with totoal')
+    }
+
+    distribution[[idx]]<- data.frame(ini=initVal,
+                              range=range,
+                              AP=AP,
+                              nAP=nAP,
+                              stringsAsFactors = F)
+  }
+  
+  distribution <- do.call(rbind,distribution)
+  
+  return(list(distribution,proportion))
+}
+
+
 #FIM ----
 # searchValue <- function(table, field, value, pId = NA){
 #   if(is.na(pId)){
