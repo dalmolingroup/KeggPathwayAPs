@@ -1761,6 +1761,197 @@ showGraphOld<-function(ecs = NA,
   #plot(edges)
 }
 
+showDynamicGraph<-function(pathway, auxInfo = T, label = 'enzyme', removeFake = T){
+  
+  if (!label %in% c('enzyme','reaction','id')) {
+    stop('Label must be "enzyme", "reaction" or "id".')
+  }
+  
+  lGraph<-getGraphFromPath(pathway = pathway,
+                           removeFake = removeFake,
+                           auxInfo = auxInfo)
+  g1<-lGraph[[1]]
+  g2 <-lGraph[[2]]
+  # coords1<-lGraph[[3]]
+  # coords2<-lGraph[[4]]
+  
+  if (label == 'enzyme') {
+    edge_attr(g1,'label')<-edge_attr(g1,"eName")
+    vertex_attr(g2,'name')<-vertex_attr(g2,"eName")
+  } else if(label == 'reaction') {
+    edge_attr(g1,'label')<-edge_attr(g1,"rName")
+    vertex_attr(g2,'name')<-vertex_attr(g2,"rName")
+  }
+  
+  # Color pallet
+  pal <- brewer.pal(9, "YlOrRd")
+  pal2 <- brewer.pal(8, "Dark2")
+  
+  # Get the iGraph object
+  iGraph <- g2
+  
+  # Convert the iGraph object toVisNetworkData
+  data <- toVisNetworkData(iGraph)
+  
+  # Create vis object
+  vis.nodes <- networkProperties_
+  vis.links <- data$edges
+  
+  # Define the nodes group
+  vis.nodes$group = vis.nodes$is_bottleneck
+  
+  if (sum(vis.nodes$group == 1, na.rm = T) > 0) {
+    vis.nodes[vis.nodes$group == 1,]$group <- 'AP'
+  }
+  
+  if (sum(vis.nodes$group == 0, na.rm = T) > 0) {
+    vis.nodes[vis.nodes$group == 0,]$group <- 'Non-AP'
+  }
+  
+  # Set the initial nodes attributes
+  vis.nodes$color.border <- "white"
+  vis.nodes$borderWidth <- 0
+  
+  # Apply the border color by bottleneck status
+  vis.nodes$color.border[which(vis.nodes$is_bottleneck == 0)] <- "white"
+  vis.nodes$color.border[which(vis.nodes$is_bottleneck == 1)] <- "blue"
+  vis.nodes$borderWidth[which(vis.nodes$is_bottleneck == 0)] <- 2 # Node border width
+  vis.nodes$borderWidth[which(vis.nodes$is_bottleneck == 1)] <- 4 # AP Node border width
+  
+  vis.nodes$id     <- vis.nodes$dictID # Node ID
+  vis.nodes$label  <- paste0(vis.nodes$name, "\n(", vis.nodes$AP_classification, ")") # Node label
+  vis.nodes$title  <- paste0("EC: ", vis.nodes$name, "<br>",
+                             "Entrez: ", vis.nodes$entrez, "<hr>",
+                             "Classification: ", vis.nodes$AP_classification, "<br>",
+                             "Is AP: ", ifelse(vis.nodes$is_bottleneck==1, 'Yes', 'No') , "<br>",
+                             "AP impact: ", vis.nodes$bottleneckImpact, "<br>",
+                             "Disconnected components: ", vis.nodes$bottleneckDisconnectedComponents, "<hr>",
+                             "Community: ", vis.nodes$community, "<br>",
+                             "Degree: ", vis.nodes$degree, "<br>",
+                             "Betweenness: ", format(round(vis.nodes$betweenness, 4), nsmall = 4), "<br>",
+                             "Clustering coefficient: ", format(round(vis.nodes$clusteringCoef, 4), nsmall = 4), "<br>",
+                             "Closeness coefficient: ", format(round(vis.nodes$closenessCoef, 4), nsmall = 4), "<br>",
+                             "Authority score: ", format(round(vis.nodes$authorityScore, 4), nsmall = 4), "<br>",
+                             "Hub score: ", format(round(vis.nodes$hubScore, 4), nsmall = 4), "<hr>",
+                             "Frequency: ", format(round(vis.nodes$percentage, 2), nsmall = 2), "% <hr>",
+                             "More info: ", vis.nodes$link) # Text on click
+  vis.nodes$shadow <- TRUE # Nodes will drop shadow
+  
+  # Properties when node highlighted
+  vis.nodes$color.highlight.background <- "orange"
+  vis.nodes$color.highlight.border <- "darkred"
+  
+  vis.nodes$color.highlight.background[which(vis.nodes$is_bottleneck == 1)] <- "#20639B"
+  vis.nodes$color.highlight.border[which(vis.nodes$is_bottleneck == 1)] <- "#173F5F"
+  
+  betweennessScaleValues <- 1
+  
+  # Replace NA values
+  if (sum(is.na(vis.nodes$betweenness), na.rm = T) > 0) {
+    vis.nodes[is.na(vis.nodes$betweenness),]$betweenness = 0
+  }
+  
+  tryCatch({
+    # Generates the background color scale
+    betweennessScaleValues <- cut(vis.nodes$betweenness, breaks = seq(min(vis.nodes$betweenness),
+                                                                      max(vis.nodes$betweenness), len = 100),
+                                  include.lowest = TRUE)
+    
+  }, error=function(e) {})
+  
+  # Apply the background color scale
+  vis.nodes$color.background <- colorRampPalette(pal)(99)[betweennessScaleValues]
+  
+  # Apply node size according to its frequency
+  vis.nodes$size <- scales::rescale(vis.nodes$percentage, to=c(10, 30))
+  
+  # Set network links properties
+  vis.links$width <- 1 # line width
+  vis.links$arrows <- "middle" # arrows: 'from', 'to', or 'middle'
+  vis.links$smooth <- TRUE    # should the edges be curved?
+  vis.links$shadow <- FALSE    # edge shadow
+  
+  # line color
+  vis.links$color <- NA
+  
+  if (sum(is.na(vis.links$reaction1Status), na.rm = T) > 0) {
+    vis.links[is.na(vis.links$reaction1Status),]$reaction1Status = 'reversible'
+  }
+  
+  if (sum(vis.links$reaction1Status == 'reversible', na.rm = T) > 0) {
+    vis.links[vis.links$reaction1Status == 'reversible',]$edge_color <- "gray"
+  }
+  
+  if (sum(vis.links$reaction1Status == 'irreversible', na.rm = T) > 0) {
+    vis.links[vis.links$reaction1Status == 'irreversible',]$edge_color <- "darkred"
+  }
+  
+  # Line title
+  vis.links$title <- paste0("Reaction: ", vis.links$reaction1, "<br>",
+                            "Status: ", vis.links$reaction1Status, "<br>",
+                            "Node1: ", vis.links$ec1, "<br>",
+                            "Node2: ", vis.links$ec2, "<br>") # Text on click
+  
+  # Paint the edges bridges in red
+  #G <- igraph::graph_from_data_frame(vis.links[,1:2], directed = FALSE)
+  #num_comp <- length(decompose.graph(G))
+  
+  #for (i in 1:length(E(G))) {
+  #  G_sub <- delete.edges(G, i)
+  #  if ( length( decompose.graph(G_sub) ) > num_comp ) vis.links$color[i] <- "red"
+  #}
+  
+  # Generate the visNetwor object
+  if (is.null(pathwayDetail_) | length(pathwayDetail_) == 0) {
+    visNetworkObj <- visNetwork(nodes = vis.nodes, edges = vis.links,
+                                background="#ffffff", width = '100%', height = '100vh',
+                                main=paste0("Pathway ", org_, pathway_),
+                                submain=paste0("<b>Nodes:</b> ", length(V(iGraph)), " <b>Edges:</b> ", length(E(iGraph))))
+  } else {
+    visNetworkObj <- visNetwork(nodes = vis.nodes, edges = vis.links,
+                                background="#ffffff", width = '100%', height = '100vh',
+                                main=paste0("Pathway ", org_, pathway_, " - ", pathwayDetail_$NAME),
+                                submain=paste0(
+                                  "<br> <b>Description:</b> ", pathwayDetail_$DESCRIPTION,
+                                  "<br><br> <b>Class:</b> ", pathwayDetail_$CLASS,
+                                  "<br><br> <b>Nodes:</b> ", length(V(iGraph)), " <b>Edges:</b> ", length(E(iGraph))
+                                ))
+  }
+  
+  #visNetworkObj <- visNetwork(nodes = vis.nodes, edges = vis.links, background="#ffffff", width = '100%', height = '85vh')
+  
+  # Generate a dynamic network
+  if (dynamicNetwork_) {
+    visNetworkObj <- visExport(visNetworkObj, type = "png", name = "network", label = paste0("Export as png"), background = "#fff",
+                               float = "right", style = NULL,loadDependencies = TRUE)
+    
+    visNetworkObj <- visExport(visNetworkObj, type = "jpeg", name = "network", label = paste0("Export as jpeg"), background = "#fff",
+                               float = "left", style = NULL,loadDependencies = TRUE)
+    
+    visNetworkObj <- visExport(visNetworkObj, type = "pdf", name = "network", label = paste0("Export as pdf"), background = "#fff",
+                               float = "right", style = NULL,loadDependencies = TRUE)
+    
+    # Add custom physics
+    visNetworkObj <- visPhysics(visNetworkObj, stabilization = TRUE, solver = 'forceAtlas2Based',
+                                forceAtlas2Based = list(gravitationalConstant = -75, avoidOverlap = 0.3))
+    
+    # Add custom options
+    visNetworkObj <- visOptions(visNetworkObj, autoResize = TRUE, manipulation = TRUE, selectedBy = 'AP_classification',
+                                highlightNearest = list(enabled = T, degree = 2, hover = T))
+    
+    # Add interaction
+    visNetworkObj <- visInteraction(visNetworkObj, navigationButtons = TRUE, dragNodes = TRUE, dragView = TRUE, zoomView = TRUE,
+                                    keyboard = TRUE, hideEdgesOnDrag = TRUE, tooltipDelay = 0)
+  } else {
+    # Static network
+    visNetworkObj <- visPhysics(visNetworkObj, stabilization = TRUE, solver = 'forceAtlas2Based',
+                                forceAtlas2Based = list(gravitationalConstant = -75, avoidOverlap = 0.3))
+  }
+  
+  # Generate the network
+  return(visNetworkObj)
+}
+
 cleanedLineGraph <- function(g1, removeFake = F){
   
   #labels<-edge_attr(g1,"label")

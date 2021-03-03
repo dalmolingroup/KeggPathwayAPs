@@ -101,6 +101,16 @@ loadDependencies <- function(){
     install.packages("reshape2", repos = "http://cran.us.r-project.org")
   }
   
+  # visNetwork
+  if (!requireNamespace("visNetwork", quietly = TRUE))
+    install.packages("visNetwork", repos = "http://cran.us.r-project.org")
+  library(visNetwork)
+  
+  # RColorBrewer
+  if (!requireNamespace("RColorBrewer", quietly = TRUE))
+    install.packages("RColorBrewer", repos = "http://cran.us.r-project.org")
+  library(RColorBrewer)
+  
   #BiocManager::install("Rgraphviz")
   #BiocManager::install("RBGL")
   
