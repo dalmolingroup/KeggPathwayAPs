@@ -13,8 +13,21 @@
 
 # Start ----
 
+#!/usr/bin/env Rscript
+args = commandArgs(trailingOnly=TRUE) # External parameters from console
+
+# Test if there is at least two arguments: if not, return an error
+if (length(args) != 2) {
+  # Examples of usage
+  # Rscript --vanilla bin/functions/dynamicGraph.R "00010" "ec"
+  # Rscript --vanilla bin/functions/dynamicGraph.R "00020" "hsa"
+  stop('Invalid arguments. Use the following: dynamicGraph.R <pathway_code> <org_code>')
+}
+
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
 #Clean all variables ----
-rm(list=ls(all=TRUE))
+#rm(list=ls(all=TRUE))
 
 # Define base dir ----
 #Did you change it to your base location?
@@ -266,36 +279,43 @@ showDynamicGraph<-function(pathway_, org_ = 'ec', auxInfo_ = T, label_ = 'enzyme
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 # Pipeline ----
-pathway_code = "00010"
+pathway_code = args[1]
+org = args[2]
+filename = paste0(pathway_code, '.html')
 
-# Generate the dynamic network
-generatedNetwork <- showDynamicGraph(pathway_ = pathway_code, org_ = 'ec', auxInfo_ = T, label_ = "enzyme", 
-                                     removeFake_ = T)
-
-# Export the network
-if (!dir.exists(file.path(paste0('./../../output/')))) {
-  dir.create(file.path(paste0('./../../output/')), showWarnings = FALSE, mode = "0775")
-}
-
-if (!dir.exists(file.path(paste0('./../../output/network/')))) {
-  dir.create(file.path(paste0('./../../output/network/')), showWarnings = FALSE, mode = "0775")
-}
-
-if (dir.exists(file.path(paste0('./../../output/network/')))) {
-  filename <- paste0(pathway_code, '.html')
+# Just execute if the network don't exist
+if (!dir.exists(file.path(paste0(dirBase, '/output/network/', filename)))) {
+  # Generate the dynamic network
+  generatedNetwork <- showDynamicGraph(pathway_ = pathway_code, org_ = org, auxInfo_ = T, label_ = "enzyme", 
+                                       removeFake_ = T)
   
-  # Save the HTML file
-  visSave(generatedNetwork, file = filename, selfcontained = TRUE)
+  # Export the network
+  if (!dir.exists(file.path(paste0(dirBase, '/output/')))) {
+    dir.create(file.path(paste0(dirBase, '/output/')), showWarnings = FALSE, mode = "0775")
+  }
   
-  if (file.exists(filename)) {
-    # Copy the file into correct directory
-    file.copy(filename, paste0('./../../output/network/', filename), overwrite = TRUE)
+  if (!dir.exists(file.path(paste0(dirBase, '/output/network/')))) {
+    dir.create(file.path(paste0(dirBase, '/output/network/')), showWarnings = FALSE, mode = "0775")
+  }
+  
+  if (dir.exists(file.path(paste0(dirBase, '/output/network/')))) {
+    filename <- paste0(pathway_code, '.html')
     
-    # Remove the generated file
-    file.remove(filename)
-  } else {
-    printMessage(paste0("Network file not found. Skipping it..."))
-    return(FALSE)
+    # Save the HTML file
+    visSave(generatedNetwork, file = filename, selfcontained = TRUE)
+    
+    if (file.exists(filename)) {
+      # Copy the file into correct directory
+      file.copy(filename, paste0(dirBase, '/output/network/', filename), overwrite = TRUE)
+      
+      # Remove the generated file
+      file.remove(filename)
+      
+      printMessage(paste0("Network generated successfuly!"))
+    } else {
+      printMessage(paste0("Network file not found. Skipping it..."))
+      return(FALSE)
+    }
   }
 }
 
