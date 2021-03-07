@@ -154,7 +154,7 @@ showDynamicGraph<-function(pathway_, org_ = 'ec', auxInfo_ = T, label_ = 'enzyme
   vis.nodes$label  <- vis.nodes$name # Node label
   #vis.nodes$label  <- paste0(vis.nodes$name, "\n(", vis.nodes$AP_classification, ")") # Node label
   vis.nodes$title  <- paste0("EC: ", vis.nodes$name, "<br>",
-                             "Entrez: ", vis.nodes$entrez, "<hr>",
+                             #"Entrez: ", vis.nodes$entrez, "<hr>",
                              #"Classification: ", vis.nodes$AP_classification, "<br>",
                              "Is AP: ", ifelse(vis.nodes$isAP==1, 'Yes', 'No') , "<br>",
                              "AP impact: ", vis.nodes$bottleneckImpact, "<br>",
@@ -236,7 +236,7 @@ showDynamicGraph<-function(pathway_, org_ = 'ec', auxInfo_ = T, label_ = 'enzyme
   
   # Generate the visNetwor object
   visNetworkObj <- visNetwork(nodes = vis.nodes, edges = vis.links,
-                              background="#ffffff", width = '100%', height = '88vh',
+                              background="#ffffff", width = '100%', height = '90vh',
                               main=paste0("Pathway ", org_, pathway_),
                               submain=paste0("<b>Nodes:</b> ", length(V(iGraph)), " <b>Edges:</b> ", length(E(iGraph))))
   
@@ -266,7 +266,37 @@ showDynamicGraph<-function(pathway_, org_ = 'ec', auxInfo_ = T, label_ = 'enzyme
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 # Pipeline ----
+pathway_code = "00010"
 
-showDynamicGraph(pathway_ = "00010", org_ = 'ec', auxInfo_ = T, label_ = "enzyme", removeFake_ = T)
+# Generate the dynamic network
+generatedNetwork <- showDynamicGraph(pathway_ = pathway_code, org_ = 'ec', auxInfo_ = T, label_ = "enzyme", 
+                                     removeFake_ = T)
+
+# Export the network
+if (!dir.exists(file.path(paste0('./../../output/')))) {
+  dir.create(file.path(paste0('./../../output/')), showWarnings = FALSE, mode = "0775")
+}
+
+if (!dir.exists(file.path(paste0('./../../output/network/')))) {
+  dir.create(file.path(paste0('./../../output/network/')), showWarnings = FALSE, mode = "0775")
+}
+
+if (dir.exists(file.path(paste0('./../../output/network/')))) {
+  filename <- paste0(pathway_code, '.html')
+  
+  # Save the HTML file
+  visSave(generatedNetwork, file = filename, selfcontained = TRUE)
+  
+  if (file.exists(filename)) {
+    # Copy the file into correct directory
+    file.copy(filename, paste0('./../../output/network/', filename), overwrite = TRUE)
+    
+    # Remove the generated file
+    file.remove(filename)
+  } else {
+    printMessage(paste0("Network file not found. Skipping it..."))
+    return(FALSE)
+  }
+}
 
 # End ----
