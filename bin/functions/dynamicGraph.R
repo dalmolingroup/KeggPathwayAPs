@@ -21,6 +21,7 @@ if (length(args) != 2) {
   # Examples of usage
   # Rscript --vanilla bin/functions/dynamicGraph.R "00010" "ec"
   # Rscript --vanilla bin/functions/dynamicGraph.R "00020" "hsa"
+  # Rscript --vanilla bin/functions/dynamicGraph.R "all" "ec"
   stop('Invalid arguments. Use the following: dynamicGraph.R <pathway_code> <org_code>')
 }
 
@@ -272,23 +273,26 @@ showDynamicGraph<-function(pathway_, org_ = 'ec', auxInfo_ = T, label_ = 'enzyme
                                 forceAtlas2Based = list(gravitationalConstant = -75, avoidOverlap = 0.3))
   }
   
+  # Additional step
+  # Annotate the network caracteristics
+  networkGlobalData[networkGlobalData$code == pathway_,]$nodes <<- length(V(g4))
+  networkGlobalData[networkGlobalData$code == pathway_,]$edges <<- length(E(g4))
+  networkGlobalData[networkGlobalData$code == pathway_,]$total_species <<- mean(totalOrg)
+  #networkGlobalData[networkGlobalData$code == pathway_,]$node_highest_impact <<- pathwayData[which.max(pathwayData$bottleneckImpact),]$name
+  #networkGlobalData[networkGlobalData$code == pathway_,]$disconnected_nodes <<- max(pathwayData$bottleneckImpact)
+  #networkGlobalData[networkGlobalData$code == pathway_,]$community <<- max(pathwayData$community)
+  networkGlobalData[networkGlobalData$code == pathway_,]$mean_degree <<- mean(vis.nodes$degree)
+  networkGlobalData[networkGlobalData$code == pathway_,]$mean_betweenness <<- mean(vis.nodes$betweenness)
+  networkGlobalData[networkGlobalData$code == pathway_,]$ap_number <<- nrow(vis.nodes[vis.nodes$isAP == 1,])
+  #networkGlobalData[networkGlobalData$code == pathway_,]$hap_number <<- nrow(pathwayData[pathwayData$AP_classification=="HAP",])
+  #networkGlobalData[networkGlobalData$code == pathway_,]$hub_number <<- nrow(pathwayData[pathwayData$AP_classification=="HUB",])
+  #networkGlobalData[networkGlobalData$code == pathway_,]$others_number <<- nrow(pathwayData[pathwayData$AP_classification=="Others",])
+  
   # Generate the network
   return(visNetworkObj)
 }
 
-#::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-# Pipeline ----
-pathway_code = args[1]
-org = args[2]
-filename = paste0(pathway_code, '.html')
-
-# Just execute if the network don't exist
-if (!dir.exists(file.path(paste0(dirBase, '/output/network/', filename)))) {
-  # Generate the dynamic network
-  generatedNetwork <- showDynamicGraph(pathway_ = pathway_code, org_ = org, auxInfo_ = T, label_ = "enzyme", 
-                                       removeFake_ = T)
-  
+exportNetwork <- function(generatedNetwork_, pathway_code_, org_) {
   # Export the network
   if (!dir.exists(file.path(paste0(dirBase, '/output/')))) {
     dir.create(file.path(paste0(dirBase, '/output/')), showWarnings = FALSE, mode = "0775")
@@ -299,10 +303,10 @@ if (!dir.exists(file.path(paste0(dirBase, '/output/network/', filename)))) {
   }
   
   if (dir.exists(file.path(paste0(dirBase, '/output/network/')))) {
-    filename <- paste0(pathway_code, '.html')
+    filename <- paste0(pathway_code_, '.html')
     
     # Save the HTML file
-    visSave(generatedNetwork, file = filename, selfcontained = TRUE)
+    visSave(generatedNetwork_, file = filename, selfcontained = TRUE)
     
     if (file.exists(filename)) {
       # Copy the file into correct directory
@@ -311,12 +315,88 @@ if (!dir.exists(file.path(paste0(dirBase, '/output/network/', filename)))) {
       # Remove the generated file
       file.remove(filename)
       
-      printMessage(paste0("Network generated successfuly!"))
+      printMessage(paste0("Network ", org_, pathway_code_, " generated successfuly!"))
     } else {
       printMessage(paste0("Network file not found. Skipping it..."))
       return(FALSE)
     }
   }
 }
+
+fillPathwayCodeWithZeros <- function(dataSet_, verbose_ = TRUE) {
+  # Status message
+  if (verbose_) {
+    printMessage(paste0("FILLING THE PATHWAYS CODE WITH ZEROS..."))
+  }
+  
+  # Count the dataSet rows
+  rows <- nrow(dataSet_)
+  
+  # Loop over the reference pathway rows
+  for (idx in 1:rows) {
+    current_pathway <- as.integer(dataSet_[idx,]$code)
+    
+    if (current_pathway >= 1000) {
+      dataSet_[idx,]$code <- paste0('0', dataSet_[idx,]$code)
+    } else if (current_pathway >= 100 & current_pathway < 1000) {
+      dataSet_[idx,]$code <- paste0('00', dataSet_[idx,]$code)
+    } else {
+      dataSet_[idx,]$code <- paste0('000', dataSet_[idx,]$code)
+    }
+  }
+  
+  # Return the result
+  return(dataSet_)
+}
+
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+# Pipeline ----
+
+# Retrieve the arguments
+pathway_code = args[1]
+org = args[2]
+
+# Initialize the pathways statistics
+networkGlobalData = read.csv(file=paste0(dirBase, '/data/database/pathway_data.csv'), header=TRUE, sep=",", stringsAsFactors=FALSE)
+networkGlobalData <- fillPathwayCodeWithZeros(networkGlobalData)
+
+if (pathway_code == 'all') {
+  # Get all pathways
+  pathwayList <- getAllPathways()
+  
+  # Loop over the list
+  lapply(pathwayList, function(pathway) {
+    # Adjust the pathway code
+    pathway = str_replace(pathway, 'ec', '')
+    
+    # Update the filename
+    filename = paste0(pathway, '.html')
+    
+    # Just execute if the network don't exist
+    if (!dir.exists(file.path(paste0(dirBase, '/output/network/', filename)))) {
+      # Generate the dynamic network
+      generatedNetwork <- showDynamicGraph(pathway_ = pathway, org_ = org, 
+                                           auxInfo_ = T, label_ = "enzyme", 
+                                           removeFake_ = T)
+      
+      exportNetwork(generatedNetwork, pathway, org)
+    }
+  })
+} else {
+  filename = paste0(pathway_code, '.html')
+  
+  # Just execute if the network don't exist
+  if (!dir.exists(file.path(paste0(dirBase, '/output/network/', filename)))) {
+    # Generate the dynamic network
+    generatedNetwork <- showDynamicGraph(pathway_ = pathway_code, org_ = org, auxInfo_ = T, label_ = "enzyme", 
+                                         removeFake_ = T)
+    
+    exportNetwork(generatedNetwork, pathway_code, org)
+  }
+}
+
+# Export the network global data
+write.csv(networkGlobalData, file=paste0(dirBase, '/data/database/pathway_data_to_import.csv'), row.names = F)
 
 # End ----

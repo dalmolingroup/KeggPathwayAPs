@@ -1989,7 +1989,11 @@ checkNewName <- function(name,
   return(dbGetQuery(dbCon,sql)[1,1])
 }
 
-getAllPathways <- function(){
+getAllPathways <- function() {
+  # Close and reopen the DB connection
+  closeDb <<- F
+  createDbConnection()
+  
   sql<-paste0('SELECT pName
               FROM path;')
   paths<- dbGetQuery(dbCon,sql)[,1]
