@@ -99,9 +99,8 @@ getGraphProperties <- function(g) {
     # c3 = suppressWarnings(cluster_edge_betweenness(g, 
     #                               directed = T,
     #                               modularity = F))
-    # result$community <- as.integer(membership(c3))
-    result$community <- 0
-    
+    result$community <- as.integer(membership(c3))
+  
     # Calculates the Eigenvector Centrality Scores of Network Positions
     # It is a measure of the influence of a node in a network.
     eigen_centrality <- igraph::eigen_centrality(g, directed = TRUE)

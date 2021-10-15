@@ -115,4 +115,7 @@ ecs<-c('ec:5.1.3.3','ec:2.7.1.147','ec:2.7.1.2','ec:2.7.1.63',
 ecs<-c('ec:4.1.1.1','ec:2.3.1.12','ec:1.2.4.1','ec:1.8.1.4','ec:6.2.1.1','ec:6.2.1.13')
 showGraph(pathway = "ec00010", ecs = ecs, plot = T)
 
-showDynamicGraph(pathway = "ec00010", removeFake = T,label = "enzyme")
+# export the dynamic networks
+showDynamicGraph(pathway = "00010", org = "ec", removeFake = T, label = "enzyme")
+
+showDynamicGraph(pathway = "00010", org = "hsa", removeFake = T, label = "enzyme")

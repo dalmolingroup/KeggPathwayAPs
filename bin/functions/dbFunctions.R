@@ -773,70 +773,34 @@ ecNodes2Db <- function(nodes, map){
   }
 }
 
-searchValue <- function(table, fields, values, allData = F) {
-  if (length(fields) != length(values)) {
+
+searchValue <- function(table, fields, values){
+  if(length(fields) != length(values)){
     stop("Fields and values must have same length.")
   }
-  
-  # Close and reopen the DB connection
-  closeDb <<- F
-  createDbConnection()
-  
-  # Format the SQL query
-  sql <- paste0('SELECT * FROM ', table, ' WHERE ')
-  
-  # Add the query values
-  if (typeof(values) == 'list') {
-    # Loop over the where fields and values
-    for (idx in 1:length(fields)) {
-      # Check how many items is inside the current value
-      currentValue = values[[idx]]
-      
-      if (length(currentValue) == 1) { # Single value
-        sql <- paste0(sql, fields[idx], ' = ', currentValue)
-      } else if (length(currentValue) > 1) { # Multiple values
-        sql <- paste0(sql, fields[idx], ' IN (')
-        
-        # Loop over the values
-        for (idx2 in 1:length(currentValue)) {
-          if (idx2 == length(currentValue)) {
-            sql <- paste0(sql, currentValue[idx2])
-          } else {
-            sql <- paste0(sql, currentValue[idx2], ', ')
-          }
-        }
-        # Finalize the query
-        sql <- paste0(sql, ')')
-      }
-      
-      # If there are more where clauses
-      if (idx != length(fields)) {
-        sql<- paste0(sql,' and ')
-      }
-    }
-  } else {
-    # Loop over the where fields and values
-    for (idx in 1:length(fields)) {
-      sql<- paste0(sql,fields[idx],' = ',values[idx])
-      if(idx != length(fields)){
-        sql<- paste0(sql,' and ')
-      }
-    }
-  }
-  
-  # Execute the query
-  resQuery <- dbGetQuery(dbCon, sql)
-  
-  #cat(sql,' ',nrow(resQuery),'\n')
-  if (nrow(resQuery)==0) {
-    return(0)
-  } else {
-    if (!allData) {
-      return(resQuery[[1]][[1]])
+  sql<-paste0('SELECT * 
+                FROM ',table,
+              ' WHERE ')
+  for(idx in 1:length(fields)){
+    if (class(values[idx]) == "list" && length(unlist(values[idx])) > 1) {
+      sql<- paste0(sql,fields[idx],' IN (', sapply(values[idx], paste, collapse=", "), ')')
     } else {
-      return(resQuery)
+      sql<- paste0(sql,fields[idx],' = ', values[idx])
+    }
+    
+    if(idx != length(fields)){
+      sql<- paste0(sql,' and ')
     }
   }
+    resQuery <- dbGetQuery(dbCon,sql)
+    #cat(sql,' ',nrow(resQuery),'\n')
+    if(nrow(resQuery) > 1){
+      return(resQuery)
+    }else if(nrow(resQuery)==0){
+      return(0)
+    }else{
+      return(resQuery[[1]][[1]])
+    }
 }
 
 prepareReacAssos <- function(){
@@ -1483,7 +1447,7 @@ getEdgesFromEcs <- function(ecs,
   return(edges)
 }
 
-getEdgesFromPath <- function(pathway){
+getEdgesFromPath <- function(pathway, org = NA){
   #retrive edges from a pathway graph using
   # enzime ecs identification
   
@@ -1497,18 +1461,20 @@ getEdgesFromPath <- function(pathway){
   pathway<- paste0('"',pathway,'"')
   # ecs<- paste0('"',ecs,'"')
   # ecs <- do.call(paste, c(as.list(ecs), sep = ","))
-  sql <- paste0(
+  if(is.na(org)){
+    sql <- paste0(
     'SELECT c1.cName as "from", 
             c2.cName as "to",
             e.nId as "nId",
             e.rName as "rName",
-            e.nName as "eName", 
+            n.eName as "eName", 
             e.type  
-      FROM edges as e INNER JOIN  
+      FROM edges as e INNER JOIN 
+        nodes as n on n.nId = e.nId INNER JOIN
       	reaction as r on r.rId = e.nId INNER JOIN  
       	wAllNodes as c1 on c1.cId = e.subs INNER JOIN  
       	wAllNodes as c2 on c2.cId = e.prod  
-      WHERE nId in (
+      WHERE e.nId in (
       	SELECT mainRId  
       	FROM reactionAssociation  
       	where rId in (
@@ -1516,6 +1482,31 @@ getEdgesFromPath <- function(pathway){
       		reacOnPath as ep on ep.rId = r.rId INNER JOIN  
       		path as p on p.pId = ep.pId  
       		where pName = ',pathway,'))')
+  }else{
+    org<- paste0('"',org,'"')
+    sql <- paste0(
+      'SELECT c1.cName as "from", 
+    c2.cName as "to",
+    e.nId as "nId",
+    e.rName as "rName",
+    n.eName as "eName", 
+    e.type 
+    FROM edges as e INNER JOIN  
+    nodes as n on n.nId = e.nId INNER JOIN
+    reaction as r on r.rId = e.nId INNER JOIN  
+    wAllNodes as c1 on c1.cId = e.subs INNER JOIN  
+    wAllNodes as c2 on c2.cId = e.prod  
+    WHERE n.nId in (
+      SELECT nId  
+      FROM nodebyorgs as nog INNER JOIN  
+      path as p on p.pId = nog.pId  
+      WHERE pName = ',pathway,' AND
+      org = ',org,')')
+    }
+  # e.nName as "eName", #replaced
+  # nodes as n on n.nId = e.nId INNER JOIN #added
+  # WHERE e.nId in ( # add e.
+    
   sql <- gsub(pattern = '\t',replacement = '',sql)
   sql <- gsub(pattern = '\n',replacement = '',sql)
   sql
@@ -1533,12 +1524,13 @@ getEdgesFromPath <- function(pathway){
 
 getGraphFromPath<-function(pathway,
                     removeFake = T,
-                    auxInfo = F){
+                    auxInfo = T,
+                    org = NA){
   closeDb <<- F
   createDbConnection()
   #get edges from path
-  edges<-getEdgesFromPath(pathway = pathway)
-  
+    edges<-getEdgesFromPath(pathway = pathway, org)
+
   #get coord of compounds for plot
   sql<-paste0('select cName, x, y
               FROM compOnPath as cp INNER JOIN
@@ -1638,18 +1630,20 @@ getGraphFromPath<-function(pathway,
 
 }
 
-
 showGraph<-function(pathway,
                     auxInfo = T,
                     label = 'enzyme',
-                    removeFake = T){
+                    removeFake = T,
+                    org = NA){
 
   if(!label %in% c('enzyme','reaction','id')){
     stop('Label must be "enzyme", "reaction" or "id".')
   }
+  
   lGraph<-getGraphFromPath(pathway = pathway,
-                   removeFake = removeFake,
-                   auxInfo = auxInfo)
+                           removeFake = removeFake,
+                           auxInfo = auxInfo,
+                           org = org)
   g1<-lGraph[[1]]
   g2 <-lGraph[[2]]
   # coords1<-lGraph[[3]]
@@ -1832,7 +1826,7 @@ cleanedLineGraph <- function(g1, removeFake = F){
                       stringsAsFactors = F)
   
   #remove duplicity
-  g3<-as_data_frame(g2,what = "edges")
+  g3<-igraph::as_data_frame(g2,what = "edges")
   
   nrow(g3[g3$from == g3$to,])
   sum(duplicated(vNames$label))
@@ -1989,11 +1983,7 @@ checkNewName <- function(name,
   return(dbGetQuery(dbCon,sql)[1,1])
 }
 
-getAllPathways <- function() {
-  # Close and reopen the DB connection
-  closeDb <<- F
-  createDbConnection()
-  
+getAllPathways <- function(){
   sql<-paste0('SELECT pName
               FROM path;')
   paths<- dbGetQuery(dbCon,sql)[,1]
@@ -2039,22 +2029,27 @@ insertMetrics <- function(pathway){
                   gProp$hubScore[idx], ');')
     resQuery <- dbExecute(dbCon,sql)
     
-  }     
+  }
+                
+                
 }
 
 cleanMetrics<- function(){
   #prepare the table nodeMetric to receive data
   sql <- "DELETE FROM nodeMetric"
   resQuery <- dbExecute(dbCon,sql)
+  
 }
 
 getNodeMetrics <- function(nodeIds_, pathwayId_) {
   # DB attributes
   table <- "nodemetric"
-  whereFields <- c("nId", "pId")
+  fields <- c("nId", "pId")
+  
+  values<-list(nodeIds_, pathwayId_)
   
   # Search in DB
-  resQuery <- searchValue(table, whereFields, list(nodeIds_, pathwayId_), allData=T)
+  resQuery <- searchValue(table, fields, values)
   
   # Check if at least one pathway was returned
   if (is.null(resQuery) || length(resQuery) == 0) {
@@ -2084,7 +2079,7 @@ createNodeTable <- function(){
   
   counter <<- 1
   total <<- length(nodes)
-  idx<-3
+  idx<-22
   for (idx in 1:total) {
     cat("Inserting node [",counter,"of",total,"]\n")
     counter<<-counter+1
@@ -2185,7 +2180,8 @@ getPathId <- function(pathCode) {
   return(resQuery)
 }
 
-getPathInfo <- function(pathwayinfo, orgName) {
+getPathInfo <- function(pathwayinfo, 
+                        orgName){
     table <- "path"
     fields <- "pName"
     
@@ -2207,7 +2203,9 @@ getPathInfo <- function(pathwayinfo, orgName) {
       stop("Pathway ", pName,' not found!')
     }
     return(list(nextId, pName))
+    
 }
+
 
 #reaction<-as.vector(reactionsRef[2,]) #debug
 insertReactionOrg<-function(reaction){
@@ -2257,7 +2255,9 @@ insertReactionOrg<-function(reaction){
                   org,'\');')
     #cat(sql,' ',rName,' ',exist,'\n')
     resQuery <- dbExecute(dbCon,sql) 
+    
   }
+
 }
 
 getTotalOrgs <- function(pId_ = 0) {
@@ -2274,13 +2274,48 @@ getTotalOrgs <- function(pId_ = 0) {
   return(orgCounts[[1]])
 }
 
-getOrgCounts <- function() {
+getOrgCounts <- function(type = NA,
+                         value = NA){
   dbCon <- createDbConnection()
-  sql <- 'select org, count(*) as count
+  if(is.na(type) | is.na(value)){
+    
+    sql<-"select org, taxon, count(*) as count
+    from nodebyorgs as no INNER JOIN
+    (SELECT DISTINCT orgId, taxon as taxon
+      FROM organism
+      WHERE taxon = \'Eukaryotes\'
+      UNION
+      SELECT DISTINCT orgId, reino as taxon
+      FROM organism
+      WHERE reino = \'Bacteria\'
+      UNION
+      SELECT DISTINCT orgId, reino as taxon
+      FROM organism
+      WHERE reino = \'Archaea\') as o on o.orgId = no.org
+    
+    GROUP by org"
+
+    #old select whit no taxon    
+  # sql <- 'select org, count(*) as count
+  #         from nodebyorgs
+  #         GROUP by org'
+  }else{
+    if(!type %in% c("taxon","reino","filo","class")){
+      cat("The parameter type must be taxon, reino, filo orclass \n\n")
+      return(0)
+    }else{
+      value <- paste0('\'',value,'\'')
+      sql <- paste0('select org, count(*) as count
           from nodebyorgs
-          GROUP by org'
+          WHERE org in (
+                  SELECT orgId
+                  FROM organism
+                  WHERE ',type, ' in ( ',value,') )
+          GROUP by org')
+    }
+  }
   
-  orgCounts <- dbGetQuery(dbCon, sql)
+  orgCounts <- dbGetQuery(dbCon,sql)
   
   dbDisconnect(dbCon) 
   
@@ -2320,7 +2355,7 @@ getAPCountByOrg <- function(orgs){
   APCounts$total<- orgCount
   
   #**************************************************************************##
-  # Apply a normalization:                                                    #
+  # Apply a normalization:                                              #
   # 100% of occurrence in a pathway can be compared with 50% of other pathway #
   #**************************************************************************##
   
