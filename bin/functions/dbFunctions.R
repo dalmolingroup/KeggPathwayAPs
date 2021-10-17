@@ -1463,7 +1463,7 @@ getEdgesFromPath <- function(pathway, org = NA){
   # ecs <- do.call(paste, c(as.list(ecs), sep = ","))
   if(is.na(org)){
     sql <- paste0(
-    'SELECT c1.cName as "from", 
+      'SELECT c1.cName as "from", 
             c2.cName as "to",
             e.nId as "nId",
             e.rName as "rName",
@@ -1502,11 +1502,11 @@ getEdgesFromPath <- function(pathway, org = NA){
       path as p on p.pId = nog.pId  
       WHERE pName = ',pathway,' AND
       org = ',org,')')
-    }
+  }
   # e.nName as "eName", #replaced
   # nodes as n on n.nId = e.nId INNER JOIN #added
   # WHERE e.nId in ( # add e.
-    
+  
   sql <- gsub(pattern = '\t',replacement = '',sql)
   sql <- gsub(pattern = '\n',replacement = '',sql)
   sql
@@ -1523,20 +1523,20 @@ getEdgesFromPath <- function(pathway, org = NA){
 }
 
 getGraphFromPath<-function(pathway,
-                    removeFake = T,
-                    auxInfo = T,
-                    org = NA){
+                           removeFake = T,
+                           auxInfo = T,
+                           org = NA){
   closeDb <<- F
   createDbConnection()
   #get edges from path
-    edges<-getEdgesFromPath(pathway = pathway, org)
-
+  edges<-getEdgesFromPath(pathway = pathway, org)
+  
   #get coord of compounds for plot
   sql<-paste0('select cName, x, y
               FROM compOnPath as cp INNER JOIN
               	compound as c on c.cId = cp.cId inner JOIN
               	path as p on p.pid = cp.pId
-              WHERE p.pName = "',pathway,'"') 
+              WHERE p.pName = "',pathway,'"')
   cpd<- dbGetQuery(dbCon,sql)
   cpd$cName<-sub(pattern = 'cpd:',replacement = '',
                  cpd$cName)
@@ -1544,24 +1544,23 @@ getGraphFromPath<-function(pathway,
   
   #create the compound graph
   g1 <- graph_from_data_frame(edges, 
-                                   directed=TRUE, 
-                                   vertices=NULL)
-
+                              directed=TRUE, 
+                              vertices=NULL)
+  
   tmp<-data.frame(idx = seq(1,length(V(g1))),
                   cName = V(g1)$name,
                   stringsAsFactors = F)
-                  
+  
   cpd<-merge(tmp,cpd,by="cName",all.x = T)
   cpd<-cpd[order(cpd$idx),]
   cpd$x[is.na(cpd$x)]<-600
   cpd$y[is.na(cpd$y)]<-300
   
   cpd$x <- (cpd$x-min(cpd$x))/
-            (max(cpd$x)-min(cpd$x))*1000 + 25
+    (max(cpd$x)-min(cpd$x))*1000 + 25
   cpd$y <- (cpd$y-min(cpd$y))/
     (max(cpd$y)-min(cpd$y))*500 + 25
   
-
   attrs<-data.frame(color='cyan',
                     name = V(g1)$name,
                     curved = T,
@@ -1575,7 +1574,7 @@ getGraphFromPath<-function(pathway,
                           y = cpd$y)
   
   edge_attr(g1, "curved") <- rep(T, gsize(g1))
-
+  
   g4<-cleanedLineGraph(g1, removeFake = removeFake)
   
   attrs<-data.frame(idx = seq(1,length(V(g4))),
@@ -1583,8 +1582,8 @@ getGraphFromPath<-function(pathway,
                     eName = vertex_attr(g4,"eName"),
                     stringsAsFactors = F)
   attrs$eName <- gsub(pattern = "[+]",
-                     replacement = '',
-                     attrs$eName)
+                      replacement = '',
+                      attrs$eName)
   attrs$eName <- gsub(pattern = "_[0-9]",
                       replacement = '',
                       attrs$eName)
@@ -1595,7 +1594,7 @@ getGraphFromPath<-function(pathway,
                 path as p on p.pid = ep.pId
               WHERE p.pName ="',pathway,'"') 
   cpd<- dbGetQuery(dbCon,sql)
-
+  
   cpd$x[is.na(cpd$x)]<-600
   cpd$y[is.na(cpd$y)]<-300
   
@@ -1608,9 +1607,9 @@ getGraphFromPath<-function(pathway,
                by.x='eName',
                by.y = 'eName',
                all.x = T)
-
+  
   attrs<-attrs[order(attrs$idx),]
-
+  
   vertex_attr(g4, "color") <- attrs$color
   vertex_attr(g4, "x") <- attrs$x
   vertex_attr(g4, "y") <- attrs$y
@@ -1621,13 +1620,13 @@ getGraphFromPath<-function(pathway,
   
   edge_attr(g1,'label')<-edge_attr(g1,"nId")
   vertex_attr(g4,'name')<-vertex_attr(g4,"nId")
-
+  
   if(auxInfo){
     return(list(g1,g4))
   }else{
     return(g4)
   }
-
+  
 }
 
 showGraph<-function(pathway,
@@ -1635,7 +1634,7 @@ showGraph<-function(pathway,
                     label = 'enzyme',
                     removeFake = T,
                     org = NA){
-
+  
   if(!label %in% c('enzyme','reaction','id')){
     stop('Label must be "enzyme", "reaction" or "id".')
   }
@@ -1663,12 +1662,12 @@ showGraph<-function(pathway,
               canvas.height = 650)
   tk_set_coords(tk1,coords1)
   tk_center(tk1)
-
+  
   tk2<-tkplot(g2,canvas.width = 1200,
               canvas.height = 650)
   tk_set_coords(tk2,coords2)
   tk_center(tk2)
-
+  
 }
 
 

@@ -27,10 +27,14 @@ showDynamicGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', remo
   pal2 <- brewer.pal(8, "Dark2")
   
   # Retrieve the pathway ID (check here, just work with ec)
-  pId = getPathId(paste0(org_, pathway_))
+  pId = getPathId(paste0("ec", pathway_))
   
   # Retrieve the graph (check here, just work with ec)
-  lGraph <- getGraphFromPath(pathway = paste0(org_, pathway_), removeFake = removeFake_, auxInfo = auxInfo_)
+  if (org_ == "ec") {
+    lGraph <- getGraphFromPath(pathway = paste0("ec", pathway_))
+  } else {
+    lGraph <- getGraphFromPath(pathway = paste0("ec", pathway_), org = org_)
+  }
   
   g1<-lGraph[[1]]
   g4 <-lGraph[[2]]
