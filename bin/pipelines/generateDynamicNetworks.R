@@ -51,7 +51,7 @@ loadDependencies()
 
 # Import the graphLoader functions
 files.sources = NULL
-files.sources[1] = paste0("../functions", "/", "dynamicGraph.R")
+files.sources[1] = paste0(funcDir, "/", "dynamicGraph.R")
 sapply(files.sources, source)
 
 #*******************************************************************************************#

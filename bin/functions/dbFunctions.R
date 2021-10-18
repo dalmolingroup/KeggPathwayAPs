@@ -2058,6 +2058,37 @@ getNodeMetrics <- function(nodeIds_, pathwayId_) {
   return(resQuery)
 }
 
+getAssociatedEnzymes <- function(nodeEName_){
+  sql <- paste0('SELECT n.nId, n.eName, na.childId, e.eName as enzymeName
+          FROM nodeAlias as na INNER JOIN
+          	enzime as e on e.eId = na.childId INNER JOIN
+          	nodes as n on n.nId = na.nId
+          WHERE na.nId in (SELECT n.nId
+          			FROM nodemetric nm INNER JOIN
+          				nodes as n on n.nId = nm.nId
+          			WHERE pId = 1 and n.ename = "', nodeEName_, '")
+          	and na.type = "e";')
+  
+  resQuery <- dbGetQuery(dbCon,sql)
+  return(resQuery)
+}
+
+getAssociatedReactions <- function(nodeEName_){
+  sql <- paste0('SELECT na.nId, n.eName, na.childId, r.rName
+          FROM nodeAlias as na INNER JOIN
+          	reaction as r on r.rId = na.childId INNER JOIN
+          	nodes as n on n.nId = na.nId
+          WHERE na.nId in (SELECT n.nId
+          			FROM nodemetric nm INNER JOIN
+          				nodes as n on n.nId = nm.nId
+          			WHERE pId = 1 and n.ename = "', nodeEName_, '")
+          	and na.type = "r"
+          order by eName;')
+  
+  resQuery <- dbGetQuery(dbCon,sql)
+  return(resQuery)
+}
+
 getPIdFromName <- function(pathway){
   sql <- paste0('SELECT pId
           FROM path

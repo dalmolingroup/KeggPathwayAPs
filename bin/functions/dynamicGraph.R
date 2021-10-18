@@ -77,6 +77,8 @@ showDynamicGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', remo
   vis.nodes$totalOrg = 0
   vis.nodes$percentage = 0;
   vis.nodes$nPercent = 0;
+  vis.nodes$associatedEnzymes = "";
+  vis.nodes$associatedReactions = "";
   
   # Get the total orgs for the current pathway
   totalOrg <- getTotalOrgs(pId)
@@ -86,6 +88,27 @@ showDynamicGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', remo
   for (idx in 1:nrow(vis.nodes)) {
     vis.nodes[idx,]$freq = countNodeFrequency(vis.nodes[idx,]$nId, pId)
     vis.nodes[idx,]$percentage = (vis.nodes[idx,]$freq / totalOrg) * 100
+    
+    # Get the nodes associated enzymes and reactions
+    createDbConnection()
+    associatedEnzymes <- getAssociatedEnzymes(vis.nodes[idx,]$name)
+    associatedReactions <- getAssociatedReactions(vis.nodes[idx,]$name)
+    
+    if (!is.null(associatedEnzymes) && length(associatedEnzymes) != 0) {
+      tempEnzymes = ""
+      for (idx2 in 1:nrow(associatedEnzymes)) {
+        tempEnzymes <- paste0(tempEnzymes, "<br>", associatedEnzymes[idx2,]$enzymeName)
+      }
+      vis.nodes[idx,]$associatedEnzymes <- tempEnzymes
+    }
+    
+    if (!is.null(associatedReactions) && length(associatedReactions) != 0) {
+      tempReactions = ""
+      for (idx2 in 1:nrow(associatedReactions)) {
+        tempReactions <- paste0(tempReactions, "<br>", associatedReactions[idx2,]$rName)
+      }
+      vis.nodes[idx,]$associatedReactions <- tempReactions
+    }
   }
   
   #**************************************************************************##
@@ -143,7 +166,9 @@ showDynamicGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', remo
                              "Authority score: ", vis.nodes$authorityScore, "<br>",
                              "Hub score: ", vis.nodes$hubScore, "<hr>",
                              "Frequency: ", format(round(vis.nodes$percentage, 2), nsmall = 2), "% <hr>",
-                             "More info: ", vis.nodes$link) # Text on click
+                             "Associated enzymes: ", vis.nodes$associatedEnzymes, "<hr>",
+                             "Associated reactions: ", vis.nodes$associatedReactions, "<hr>",
+                             "More info: ", vis.nodes$link) # Text on click,
   vis.nodes$shadow <- TRUE # Nodes will drop shadow
   
   # Properties when node highlighted
@@ -227,7 +252,7 @@ showDynamicGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', remo
                                 highlightNearest = list(enabled = T, degree = 2, hover = T))
     
     # Add interaction
-    visNetworkObj <- visInteraction(visNetworkObj, navigationButtons = TRUE, dragNodes = TRUE, dragView = TRUE, zoomView = TRUE,
+    visNetworkObj <- visInteraction(visNetworkObj, navigationButtons = FALSE, dragNodes = TRUE, dragView = TRUE, zoomView = TRUE,
                                     keyboard = TRUE, hideEdgesOnDrag = TRUE, tooltipDelay = 0)
   } else {
     # Static network
