@@ -91,8 +91,8 @@ showDynamicGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', remo
     
     # Get the nodes associated enzymes and reactions
     createDbConnection()
-    associatedEnzymes <- getAssociatedEnzymes(vis.nodes[idx,]$name)
-    associatedReactions <- getAssociatedReactions(vis.nodes[idx,]$name)
+    associatedEnzymes <- getAssociatedEnzymes(vis.nodes[idx,]$name, paste0("ec", pathway_))
+    associatedReactions <- getAssociatedReactions(vis.nodes[idx,]$name, paste0("ec", pathway_))
     
     if (!is.null(associatedEnzymes) && length(associatedEnzymes) != 0) {
       tempEnzymes = ""
