@@ -1531,6 +1531,11 @@ getGraphFromPath<-function(pathway,
   #get edges from path
   edges<-getEdgesFromPath(pathway = pathway, org)
   
+  # Handle the case when the pathway doesn't exists
+  if (is.null(edges) || nrow(edges) == 0) {
+    return(NULL)
+  }
+  
   #get coord of compounds for plot
   sql<-paste0('select cName, x, y
               FROM compOnPath as cp INNER JOIN
@@ -1575,7 +1580,15 @@ getGraphFromPath<-function(pathway,
   
   edge_attr(g1, "curved") <- rep(T, gsize(g1))
   
-  g4<-cleanedLineGraph(g1, removeFake = removeFake)
+  g4 <- NULL
+  
+  tryCatch({
+    g4<-cleanedLineGraph(g1, removeFake = removeFake)
+  }, error=function(e) {})
+  
+  if (is.null(g4)) {
+    return(NULL)
+  }
   
   attrs<-data.frame(idx = seq(1,length(V(g4))),
                     color='yellow',

@@ -62,17 +62,19 @@ sapply(files.sources, source)
 # Pipeline basic settings #
 #*************************#
 
-# Create tge DB connection
-createDbConnection()
-
 # Load the pathways by organisms data
 orgList <- c("ec", "hsa", "mmu", "dme", "sce", "cel")
+#orgList <- getOrgCounts()
+#orgList <- orgList$org
+
+# Create tge DB connection
+createDbConnection()
 
 # Load the paythway list
 pathwayList <- getAllPathways()
 
 # Reduce the pathway list for testint purpose
-pathwayList = pathwayList[1:5]
+#pathwayList = pathwayList[1:5]
 
 #*******************************************************************************************#
 
@@ -97,13 +99,19 @@ lapply(orgList, function(org_) {
     printMessage(paste0("GENERATING ORG ", org_, ", PATHWAY ", pathway_, " INTERATIVE NETWORK [", pathway_index, " OF ", length(pathwayList), "]"))
     
     # Just execute if the network don't exist
-    if (!dir.exists(file.path(paste0(dirBase, '/output/network/', org_, pathway_)))) {
+    if (!file.exists(file.path(paste0(dirBase, '/output/network/', org_, '/', pathway_, '.html')))) {
       # Generate the dynamic network
       generatedNetwork <- showDynamicGraph(pathway_ = pathway_, org_ = org_, 
                                            auxInfo_ = T, label_ = "enzyme", 
                                            removeFake_ = T)
       
-      exportNetwork(generatedNetwork, pathway_, org_)
+      if (!is.null(generatedNetwork)) {
+        exportNetwork(generatedNetwork, pathway_, org_)
+      } else {
+        printMessage(paste0("Organism doesn't have this pathway, skipping it..."))
+      }
+    } else {
+      printMessage(paste0("Network already exists, skipping it..."))
     }
     
     # Increment the index

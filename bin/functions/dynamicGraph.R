@@ -36,6 +36,10 @@ showDynamicGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', remo
     lGraph <- getGraphFromPath(pathway = paste0("ec", pathway_), org = org_)
   }
   
+  if (is.null(lGraph)) {
+    return(NULL)
+  }
+  
   g1<-lGraph[[1]]
   g4 <-lGraph[[2]]
   
@@ -225,8 +229,20 @@ showDynamicGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', remo
   vis.links$nodeTo = ''
   
   for (idx in 1:nrow(vis.links)) {
-    vis.links[idx,]$nodeFrom = vis.nodes[vis.nodes$nId == vis.links[idx,]$from,]$name
-    vis.links[idx,]$nodeTo = vis.nodes[vis.nodes$nId == vis.links[idx,]$to,]$name
+    currentNodeFrom <- vis.nodes[vis.nodes$nId == vis.links[idx,]$from,]$name
+    currentNodeTo <- vis.nodes[vis.nodes$nId == vis.links[idx,]$to,]$name
+    
+    if (length(currentNodeFrom) != 0) {
+      vis.links[idx,]$nodeFrom <- currentNodeFrom
+    } else {
+      vis.links[idx,]$nodeFrom <- data$nodes[data$nodes$nId == vis.links[idx,]$from,]$eName
+    }
+    
+    if (length(currentNodeTo) != 0) {
+      vis.links[idx,]$nodeTo <- currentNodeTo
+    } else {
+      vis.links[idx,]$nodeTo <- data$nodes[data$nodes$nId == vis.links[idx,]$to,]$eName
+    }
   }
   
   # Line title
