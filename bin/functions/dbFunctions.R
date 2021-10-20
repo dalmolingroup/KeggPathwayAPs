@@ -782,14 +782,21 @@ searchValue <- function(table, fields, values){
                 FROM ',table,
               ' WHERE ')
   for(idx in 1:length(fields)){
-    sql<- paste0(sql,fields[idx],' = ',values[idx])
+    if (class(values[idx]) == "list" && length(unlist(values[idx])) > 1) {
+      sql<- paste0(sql,fields[idx],' IN (', sapply(values[idx], paste, collapse=", "), ')')
+    } else {
+      sql<- paste0(sql,fields[idx],' = ', values[idx])
+    }
+    
     if(idx != length(fields)){
       sql<- paste0(sql,' and ')
     }
   }
     resQuery <- dbGetQuery(dbCon,sql)
     #cat(sql,' ',nrow(resQuery),'\n')
-    if(nrow(resQuery)==0){
+    if(nrow(resQuery) > 1){
+      return(resQuery)
+    }else if(nrow(resQuery)==0){
       return(0)
     }else{
       return(resQuery[[1]][[1]])
@@ -1456,7 +1463,7 @@ getEdgesFromPath <- function(pathway, org = NA){
   # ecs <- do.call(paste, c(as.list(ecs), sep = ","))
   if(is.na(org)){
     sql <- paste0(
-    'SELECT c1.cName as "from", 
+      'SELECT c1.cName as "from", 
             c2.cName as "to",
             e.nId as "nId",
             e.rName as "rName",
@@ -1495,11 +1502,11 @@ getEdgesFromPath <- function(pathway, org = NA){
       path as p on p.pId = nog.pId  
       WHERE pName = ',pathway,' AND
       org = ',org,')')
-    }
+  }
   # e.nName as "eName", #replaced
   # nodes as n on n.nId = e.nId INNER JOIN #added
   # WHERE e.nId in ( # add e.
-    
+  
   sql <- gsub(pattern = '\t',replacement = '',sql)
   sql <- gsub(pattern = '\n',replacement = '',sql)
   sql
@@ -1516,20 +1523,25 @@ getEdgesFromPath <- function(pathway, org = NA){
 }
 
 getGraphFromPath<-function(pathway,
-                    removeFake = T,
-                    auxInfo = T,
-                    org = NA){
+                           removeFake = T,
+                           auxInfo = T,
+                           org = NA){
   closeDb <<- F
   createDbConnection()
   #get edges from path
-    edges<-getEdgesFromPath(pathway = pathway, org)
-
+  edges<-getEdgesFromPath(pathway = pathway, org)
+  
+  # Handle the case when the pathway doesn't exists
+  if (is.null(edges) || nrow(edges) == 0) {
+    return(NULL)
+  }
+  
   #get coord of compounds for plot
   sql<-paste0('select cName, x, y
               FROM compOnPath as cp INNER JOIN
               	compound as c on c.cId = cp.cId inner JOIN
               	path as p on p.pid = cp.pId
-              WHERE p.pName = "',pathway,'"') 
+              WHERE p.pName = "',pathway,'"')
   cpd<- dbGetQuery(dbCon,sql)
   cpd$cName<-sub(pattern = 'cpd:',replacement = '',
                  cpd$cName)
@@ -1537,20 +1549,20 @@ getGraphFromPath<-function(pathway,
   
   #create the compound graph
   g1 <- graph_from_data_frame(edges, 
-                                   directed=TRUE, 
-                                   vertices=NULL)
-
+                              directed=TRUE, 
+                              vertices=NULL)
+  
   tmp<-data.frame(idx = seq(1,length(V(g1))),
                   cName = V(g1)$name,
                   stringsAsFactors = F)
-                  
+  
   cpd<-merge(tmp,cpd,by="cName",all.x = T)
   cpd<-cpd[order(cpd$idx),]
   cpd$x[is.na(cpd$x)]<-600
   cpd$y[is.na(cpd$y)]<-300
   
   cpd$x <- (cpd$x-min(cpd$x))/
-            (max(cpd$x)-min(cpd$x))*1000 + 25
+    (max(cpd$x)-min(cpd$x))*1000 + 25
   cpd$y <- (cpd$y-min(cpd$y))/
     (max(cpd$y)-min(cpd$y))*500 + 25
   
@@ -1568,16 +1580,24 @@ getGraphFromPath<-function(pathway,
                           y = cpd$y)
   
   edge_attr(g1, "curved") <- rep(T, gsize(g1))
-
-  g4<-cleanedLineGraph(g1, removeFake = removeFake)
+  
+  g4 <- NULL
+  
+  tryCatch({
+    g4<-cleanedLineGraph(g1, removeFake = removeFake)
+  }, error=function(e) {})
+  
+  if (is.null(g4)) {
+    return(NULL)
+  }
   
   attrs<-data.frame(idx = seq(1,length(V(g4))),
                     color='yellow',
                     eName = vertex_attr(g4,"eName"),
                     stringsAsFactors = F)
   attrs$eName <- gsub(pattern = "[+]",
-                     replacement = '',
-                     attrs$eName)
+                      replacement = '',
+                      attrs$eName)
   attrs$eName <- gsub(pattern = "_[0-9]",
                       replacement = '',
                       attrs$eName)
@@ -1588,7 +1608,7 @@ getGraphFromPath<-function(pathway,
                 path as p on p.pid = ep.pId
               WHERE p.pName ="',pathway,'"') 
   cpd<- dbGetQuery(dbCon,sql)
-
+  
   cpd$x[is.na(cpd$x)]<-600
   cpd$y[is.na(cpd$y)]<-300
   
@@ -2034,6 +2054,56 @@ cleanMetrics<- function(){
   
 }
 
+getNodeMetrics <- function(nodeIds_, pathwayId_) {
+  # DB attributes
+  table <- "nodemetric"
+  fields <- c("nId", "pId")
+  
+  values<-list(nodeIds_, pathwayId_)
+  
+  # Search in DB
+  resQuery <- searchValue(table, fields, values)
+  
+  # Check if at least one pathway was returned
+  if (is.null(resQuery) || length(resQuery) == 0) {
+    stop("Nodes not found!")
+  }
+  
+  return(resQuery)
+}
+
+getAssociatedEnzymes <- function(nodeEName_, pName_){
+  sql <- paste0('SELECT n.nId, n.eName, na.childId, e.eName as enzymeName
+          FROM nodeAlias as na INNER JOIN
+          	enzime as e on e.eId = na.childId INNER JOIN
+          	nodes as n on n.nId = na.nId
+          WHERE na.nId in (SELECT n.nId
+          			FROM nodemetric nm INNER JOIN
+          				nodes as n on n.nId = nm.nId  INNER JOIN
+						path as p on p.pId = nm.pId
+          			WHERE p.pName = "', pName_, '" and n.ename = "', nodeEName_, '")
+          	and na.type = "e";')
+  
+  resQuery <- dbGetQuery(dbCon,sql)
+  return(resQuery)
+}
+
+getAssociatedReactions <- function(nodeEName_, pName_){
+  sql <- paste0('SELECT na.nId, n.eName, na.childId, r.rName
+          FROM nodeAlias as na INNER JOIN
+            	reaction as r on r.rId = na.childId INNER JOIN
+          	  nodes as n on n.nId = na.nId
+          WHERE na.nId in (SELECT n.nId
+            			FROM nodemetric nm INNER JOIN
+            				nodes as n on n.nId = nm.nId  INNER JOIN
+  						path as p on p.pId = nm.pId
+            			WHERE p.pName = "', pName_, '" and n.ename = "', nodeEName_, '")
+            	and na.type = "r";')
+  
+  resQuery <- dbGetQuery(dbCon,sql)
+  return(resQuery)
+}
+
 getPIdFromName <- function(pathway){
   sql <- paste0('SELECT pId
           FROM path
@@ -2136,6 +2206,24 @@ createDbConnection <- function(){
   return(dbCon)
 }
 
+getPathId <- function(pathCode) {
+  # DB attributes
+  table <- "path"
+  fields <- "pName"
+  
+  # Adjust the string escape
+  values <- paste0("'", pathCode, "'")
+  
+  # Search in DB
+  resQuery <- searchValue(table, fields, values)
+  
+  # Check if at least one pathway was returned
+  if (is.null(resQuery) || length(resQuery) == 0) {
+    stop("Pathway ", pathCode,' not found!')
+  }
+  
+  return(resQuery)
+}
 
 getPathInfo <- function(pathwayinfo, 
                         orgName){
@@ -2244,6 +2332,19 @@ insertMap<-function(mapL){
   
 }
 
+getTotalOrgs <- function(pId_ = 0) {
+  dbCon <- createDbConnection()
+  
+  if (!is.null(pId_) && pId_ != 0) {
+    sql <- paste0('select count(DISTINCT org) as orgCount from nodebyorgs where pId = ', pId_)
+  } else {
+    sql <- 'select count(DISTINCT org) as orgCount from nodebyorgs'
+  }
+  
+  orgCounts <- dbGetQuery(dbCon, sql)
+  dbDisconnect(dbCon) 
+  return(orgCounts[[1]])
+}
 
 getOrgCounts <- function(type = NA,
                          value = NA){
@@ -2291,6 +2392,14 @@ getOrgCounts <- function(type = NA,
   dbDisconnect(dbCon) 
   
   return(orgCounts)
+}
+
+countNodeFrequency <- function(nId_, pId_) {
+  dbCon <- createDbConnection()
+  sql <- paste0('select count(DISTINCT org) as orgCount from nodebyorgs where nId = ', nId_, ' and pId = ', pId_)
+  orgCounts <- dbGetQuery(dbCon, sql)
+  dbDisconnect(dbCon) 
+  return(orgCounts[[1]])
 }
 
 getAPCountByOrg <- function(orgs){
