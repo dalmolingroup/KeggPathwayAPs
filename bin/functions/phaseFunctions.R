@@ -387,7 +387,11 @@ createGraphMetrics <- function(pathways = 'all',
 # Phase 06 ----
 # Calculate statistics 
 # plot different graphics
-analiseData <- function(skip = T){
+analiseData <- function(skip = T, 
+                        sd = 1, 
+                        bicaudal = T,
+                        type = NA,
+                        value = NA){
   
   if(skip){
     cat("Skiping data analisys... \n\n")
@@ -396,19 +400,24 @@ analiseData <- function(skip = T){
   
   #get list of organisms that have 
   #a sufficient number of enzymes
-  orgs<-enzymeDistrib(sdFactor = 1, 
+  orgs<-enzymeDistrib(sdFactor = sd, 
                       quiet = F,
                       plot = T,
-                      save = T)
+                      save = T,
+                      bicaudal = bicaudal,
+                      type = type,
+                      value = value)
   #get Counts of APs and Non APs, based in an org list
   apCounts <- getAPCountByOrg(orgs = orgs)
   options(warn=-1)
-  tempTest(apCounts,pval = 0.05,save = T )
+  tempTest(apCounts,pval = 0.05,save = T,
+           value = value)
   
   #plot the heatmap (figure 4A)
   plotHeatMap(apCounts = apCounts,
               normalized = T,
-              save = T)
+              save = T,
+              value=value)
   
   distrib<-stratifyAPs(apCounts,
                        interval = 0.1,
@@ -419,8 +428,9 @@ analiseData <- function(skip = T){
   plotBinomial(distribution = distribution,
                proportion = proportion,
                p_value = 0.05,
-               save = F,
-               quiet = F)
+               save = T,
+               quiet = F,
+               value=value)
   if(!require(rcompanion)){install.packages("rcompanion")}
   
     library(DescTools)
@@ -449,16 +459,16 @@ analiseData <- function(skip = T){
          y = distribution[,c(6)])
   
   
-  FUN = function(i,j){    
-    chisq.test(matrix(c(Matriz[i,1], Matriz[i,2],
-                        Matriz[j,1], Matriz[j,2]),
-                      nrow=2,
-                      byrow=TRUE))$ p.value
-  }
+  # FUN = function(i,j){    
+  #   chisq.test(matrix(c(Matriz[i,1], Matriz[i,2],
+  #                       Matriz[j,1], Matriz[j,2]),
+  #                     nrow=2,
+  #                     byrow=TRUE))$ p.value
+  # }
   
-  pairwise.table(FUN,
-                 rownames(distribution[,c(3,4)]),
-                 p.adjust.method="none")
-  
+  # pairwise.table(FUN,
+  #                rownames(distribution[,c(3,4)]),
+  #                p.adjust.method="none")
+  # 
   
 }

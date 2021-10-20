@@ -24,11 +24,19 @@
 enzymeDistrib <- function(sdFactor = NA,
                           plot = T, 
                           save = T,
-                          quiet = T){
-  orgCounts<-getOrgCounts()
+                          quiet = T,
+                          bicaudal = F,
+                          type = NA,
+                          value = NA){
+  if(is.na(value)){
+    value <- 'All Organisms'
+  }
+  orgCounts<-getOrgCounts(type = type,
+                          value = value)
   
   md<-mean(orgCounts$count)
   sd <- sd(orgCounts$count)
+  max <- max(orgCounts$count)
   
   #density calculation
   d <- density(orgCounts$count,n=100)
@@ -51,26 +59,33 @@ enzymeDistrib <- function(sdFactor = NA,
     percent<-100
     percent2<-0 
   }else{
-    limit<-md-sdFactor*sd
-    txtSd <-paste0(sdFactor,' Std dev')
-    posSd <- limit
-    percent<-round(nrow(orgCounts[orgCounts$count>md-sdFactor*sd,])/nrow(orgCounts)*100,2)
-    percent2<-round(100-percent,2)
+    if(bicaudal){
+      limit<-md-sdFactor*sd
+      limitMax<-md+sdFactor*sd
+      txtSd <-paste0(sdFactor,' Std dev')
+      posSd <- limit
+      posSdMax<-limitMax
+      percent<-round(nrow(orgCounts[orgCounts$count>md-sdFactor*sd & orgCounts$count<md+sdFactor*sd ,])/nrow(orgCounts)*100,2)
+      percent2<-round(100-percent,2)
+    }else{
+      limit<-md-sdFactor*sd
+      limitMax<-max
+      txtSd <-paste0(sdFactor,' Std dev')
+      posSd <- limit
+      percent<-round(nrow(orgCounts[orgCounts$count>md-sdFactor*sd,])/nrow(orgCounts)*100,2)
+      percent2<-round(100-percent,2)
+    }
   }
   if(plot){
     # plot ----
     g1<-ggplot()+
-      ggtitle(paste0("Enzymes distribution per Organims"))+
+      ggtitle(paste0("Enzymes distribution per Organims - ",value))+
       theme_bw()+
       xlab('Enzymes count')+
       ylab("Organim count") +
-      scale_y_continuous(name = expression("Organim count"))+
       geom_rect(aes(xmin = min(densidade$xDens), xmax = limit,
                     ymin = 0, ymax = maxH+10,
                     fill = "Discarted"))+
-      geom_rect(aes(xmin = limit, xmax = max(densidade$xDens),
-                    ymin = 0, ymax = maxH+10,
-                    fill = "Considered"))+
       geom_vline(xintercept = md, 
                  col = alpha("blue",0.45))+
       geom_vline(xintercept = posSd, 
@@ -83,7 +98,7 @@ enzymeDistrib <- function(sdFactor = NA,
                     color="Density"))+
       annotate(geom = 'text',
                x=c(md-15,
-                   md-sd-15),
+                   md-sdFactor*sd-15),
                y=c(maxH-10,
                    maxH-10),
                label=c('Mean',
@@ -113,32 +128,106 @@ enzymeDistrib <- function(sdFactor = NA,
                                                       fill=c("magenta2",NA), 
                                                       color= c("magenta2", "black"))),
              linetype = guide_legend(override.aes = list(color = "orange")))
+    if(bicaudal){
+      g1<-g1+geom_rect(aes(xmin = limitMax, xmax = max(densidade$xDens),
+                    ymin = 0, ymax = maxH+10,
+                    fill = "Discarted"))+
+        geom_rect(aes(xmin = limit, xmax = limitMax,
+                      ymin = 0, ymax = maxH+10,
+                      fill = "Considered"))+
+        geom_vline(xintercept = posSdMax, 
+                   col = alpha("blue",0.45),
+                   lty = 2)
+    }else{
+      g1<-g1+geom_rect(aes(xmin = limit, xmax = max(densidade$xDens),
+                    ymin = 0, ymax = maxH+10,
+                    fill = "Considered"))
+    }
+        
+  }
+  if(value == "All Organisms"){
+    #g1<-g1+scale_x_continuous(limits = c(0,2000))
+    idx<-1
+    groups<-list()
+    bins<-seq(from=0, to= 2000, by=250)
+    for (bin in (1:(length(bins)-1))) {
+      for(taxon in c('Archaea','Bacteria','Eukaryotes')){
+        qtd<-nrow(orgCounts[orgCounts$taxon == taxon &
+                            (orgCounts$count>bins[bin] &
+                             orgCounts$count<=bins[bin+1]),])
+        groups[[idx]]<-data.frame(taxon = taxon,
+                                  bin = bin,
+                                  count = qtd,
+                                  ini=bins[bin],
+                                  fim = bins[bin+1],
+                                  stringsAsFactors=F)
+        
+        idx<-idx+1
+        #print(group)
+      }
+      }
+    groups <- do.call(rbind, groups)
+    groups$position<- (groups$bin-1)*250+125
+    
+    g2<-ggplot(groups, aes(fill=taxon, y=count, x=position)) + 
+      theme_bw()+
+      #theme_nothing()+
+      xlab('Proportion')+
+      ylab("") +
+      geom_bar(position = 'fill',stat="identity")+
+      scale_x_continuous(limits = c(-150,2000),labels = NULL, breaks = NULL)+
+      theme(panel.grid.major.x = element_blank(), 
+            panel.grid.minor.x = element_blank(),
+            axis.line.x = element_blank(),
+            axis.line.x.top = element_blank(),
+            axis.line.x.bottom = element_blank(),
+            # axis.line.y = element_blank(),
+            # axis.line.y.left = element_blank(),
+            # axis.line.y.right = element_blank(),
+            axis.ticks = element_blank(),
+            axis.ticks.y = element_blank(),
+            panel.border = element_blank(),
+            )
+      
+    
+    
+    # grid.newpage()
+    # grid.draw(rbind(ggplotGrob(g1), ggplotGrob(g2), size = "last"))
+    # 
+    # g2
+    # g3<-g1
+    g1<-plot_grid(g1, g2, ncol = 1, align = 'v',rel_heights=c(3,1))
+  }
     plot(g1)
     # save ----
     if(save){
-      fileName=file.path(dirFig,'enzDistr.pdf')
+      fileName=file.path(dirFig,paste0(value,'enzDistr.pdf'))
       ggsave(filename = fileName, 
              plot = g1,
              device = "pdf",
              width = 11,height = 8,
              dpi=600)
     }
-  }
+  
   # quiet ----
   if(!quiet){
     cat('Total of organisms:', nrow(orgCounts),'\n',
         '\tMean of enzymes counts:', round(md,2),
         '\tStd Dev:', round(sd,2),'\n',
-        '\tOrgs considered:',nrow(orgCounts[orgCounts$count>=limit,]),
+        '\tOrgs considered:',nrow(orgCounts[orgCounts$count>=limit & orgCounts$count<=limitMax,]),
         '\t(',percent,'%)')
   }
-  return(orgCounts$org[orgCounts$count>=limit])
+  return(orgCounts$org[orgCounts$count>=limit & orgCounts$count<=limitMax])
 }
 
 
 plotHeatMap <- function(apCounts,
                         normalized = T,
-                        save = T){
+                        save = T, 
+                        value = NA){
+  if(is.na(value)){
+    value <- 'All Organisms'
+  }
   if(normalized){
     apCounts$percent<-apCounts$nPercent
   }else{
@@ -174,10 +263,11 @@ plotHeatMap <- function(apCounts,
   faixas$ApN <- (faixas$Ap-min(faixas$Ap)) / (max(faixas$Ap)-min(faixas$Ap))
   faixas$nApN <- (faixas$nAp - min(faixas$nAp)) / (max(faixas$nAp)-min(faixas$nAp))
   
+  label= factor(c('APs','nAP'),ordered = F)
   g1 <- ggplot(data = faixas) +
-    geom_tile(aes(y=percent, x=1, fill=(ApN))) +
-    geom_tile(aes(y=percent, x=2), fill='white', color='white') +
-    geom_tile(aes(y=percent, x=3, fill=(nApN))) +
+    geom_tile(aes(y=percent, x=label[1], fill=(ApN))) +
+    #geom_tile(aes(y=percent, x=2), fill='white', color='white') +
+    geom_tile(aes(y=percent, x=label[2], fill=(nApN))) +
     
     scale_fill_gradient(low = "white", high = "#173F5F") +
     #scale_fill_gradient(low = "white", high = "black") +
@@ -187,7 +277,8 @@ plotHeatMap <- function(apCounts,
     # Chart visual properties
     xlab("") +
     ylab("") +
-    ggtitle("") +
+    ggtitle(value) +
+    #scale_x_discrete(' ',labels= c('bucets','m','jj'))+
     theme_bw() +
     theme(plot.title = element_text(face="bold", size=20, hjust = 0),
           axis.title.x = element_text(face="bold", size=20, margin = margin(t = 15, r = 0, b = 0, l = 0)),
@@ -199,21 +290,25 @@ plotHeatMap <- function(apCounts,
           legend.position = 'right') + labs(fill = "Density")
   plot(g1)
   if(save){
-    fileName=file.path(dirFig,'heatMap.pdf')
+    fileName=file.path(dirFig,paste0(value,'heatMap.pdf'))
     ggsave(filename = fileName, 
            plot = g1,
            device = "pdf",
            width = 11,height = 8,
            dpi=600)
-  }}
+  }
+  }
 
 plotBinomial <- function(distribution,
                          proportion,
                          alternative = 'g',
                          p_value = 0.01,
                          save = T,
-                         quiet = T){
-  
+                         quiet = T,
+                         value = NA){
+  if(is.na(value)){
+    value <- 'All Organisms'
+  }
   distribution$binom <- 1
   for (idx in 1:nrow(distribution)) {
     AP <- distribution$AP[idx]
@@ -246,10 +341,11 @@ plotBinomial <- function(distribution,
   distribution[distribution$pCor>p_value,]$group <- 
     rep('Non-Significative',
         nrow(distribution[distribution$pCor>p_value,]))
+  yMax<-max(distribution$AP/(distribution$AP+distribution$nAP))
   
   colwidth<-1/nrow(distribution)-(1/(nrow(distribution)*10))
   # Plot the graph
-  g1 <- ggplot() + ggtitle("") + # for the main title
+  g1 <- ggplot() + ggtitle(value) + # for the main title
     xlab("Range (%)") +
     ylab("Ratio (Articulation point/Total)") +
     geom_col(data = distribution, 
@@ -257,8 +353,19 @@ plotBinomial <- function(distribution,
                  y=(AP/(AP+nAP)), 
                  fill=group), 
              width=colwidth) +
-    geom_hline(yintercept = proporcao, lty=2, col="#E75480") +
+    geom_hline(yintercept = proportion, lty=2, col="#E75480") +
     scale_fill_manual(values = c("#ED553B", "#173F5F")) +
+    annotate("text", x = 0.05, y = -0.01, label = "Rare",size = 6, col='blue') +  
+    annotate("text", x = 0.95, y = -0.01, label = "Common",size = 6, col='blue') +  
+    # geom_text(data = data_frame(label=c('Rare','Common'),
+    #                             x = c(0,1),
+    #                             y = c(-0.5,-0.5)),
+    #           aes(label = label, x=x, y=y),
+    #           hjust = 0,
+    #           size = 8) +
+    coord_cartesian(xlim = c(0, 1),
+                    ylim = c(0,yMax),
+                    clip = 'off') +   # This keeps the labels from disappearing
     theme_bw() +
     theme(plot.title = element_text(face="bold", size=20, hjust = 0),
           axis.title.x = element_text(face="bold", size=20, margin = margin(t = 15, r = 0, b = 0, l = 0)),
@@ -269,15 +376,17 @@ plotBinomial <- function(distribution,
           legend.text = element_text(size=16),
           legend.position = 'none') + labs(fill = "Range group")
   
+  
   plot(g1)
   # save ----
   if(save){
-    fileName=file.path(dirFig,'binomial.pdf')
+    fileName=file.path(dirFig,paste0(value,'binomial.pdf'))
     ggsave(filename = fileName, 
            plot = g1,
            device = "pdf",
            width = 11,height = 8,
            dpi=600)
+    cat('passou')
   }
   # quiet ----
   if(!quiet){
@@ -292,9 +401,9 @@ plotBinomial <- function(distribution,
     }
     cat('p-val:', p_value,'\t',
         nrow(distribution),'stripes\n',
-        'AP/nAP ratio:',proporcao,'\n',
-        'APs:',nrow(apCounts[apCounts$isAP ==1,]),'\t',
-        'nAps:',nrow(apCounts[apCounts$isAP ==0,]),'\n')
+        'AP/nAP ratio:',proportion,'\n',
+        'APs:',sum(distribution$AP),'\t',
+        'nAps:',sum(distribution$nAP),'\n')
     
   }
   
@@ -302,7 +411,11 @@ plotBinomial <- function(distribution,
 
 tempTest <- function(apCounts,
                      pval = 0.05,
-                     save = T){
+                     save = T, 
+                     value = NA){
+  if(is.na(value)){
+    value <- 'All Organisms'
+  }
   aps<-apCounts$nPercent[apCounts$isAP == 1]
   aps<-aps[order(aps)]
   naps<-apCounts$nPercent[apCounts$isAP == 0]
@@ -316,24 +429,38 @@ tempTest <- function(apCounts,
   data <- data.frame(type=c(la,ln),
                      value = c(aps,naps),
                      color = c(ca,cn))
+  wt<-wilcox.test(aps, naps,alternative = 't', paired = F)
   # violin ----
   g1<-ggplot(data = data,
          aes(y=value, 
              x=type, 
              #color = color,
              fill = color))+
-    theme_bw()+
+    theme_bw()+ 
+    ggtitle(value)+
     xlab("") +
     ylab("Presence in species") +
     geom_violin(draw_quantiles = c(0.25, 0.75),
-                linetype = "dashed") +
-    geom_violin(fill="transparent",draw_quantiles = 0.5) +
+                linetype = "dashed",
+                scale = 'count',
+                trim = F) +
+    geom_violin(fill="transparent",
+                draw_quantiles = 0.5,
+                scale = 'count',
+                trim = F) +
     stat_summary(aes(color="mean"),
                  fun=mean, 
                  geom="point", 
                  shape=20, 
                  size=3, 
                  fill="red")+
+    annotate(geom = 'label',
+             x=c(1.5),
+             y=c(0.5),
+             label=c(paste0('M-W U test p-val:\n',round(wt$p.value,5))),
+             size = c(3),
+             hjust = c('center'))+
+    
     scale_fill_manual("",guide=F,
                       values = c('AP'=alpha('blue',alpha = 0.25),
                                  'non AP'=alpha('red',alpha = 0.25)))+
@@ -358,13 +485,13 @@ tempTest <- function(apCounts,
               aes(x=x1, y=y1), col='blue')
   
     cat('\n####################################\n\n')
-    print(ks.test(x=aps,
-          y=naps,
+    print(ks.test(x=data1$y1,
+          y=data2$y2,
           alternative = 'g'))
   cat('\n####################################\n\n')
   print(var.test(aps,naps,alternative = 'g'))
   cat('\n####################################\n\n')
-  print(wilcox.test(aps, naps,alternative = 't'))
+  print(wilcox.test(aps, naps,alternative = 't', paired = F))
   
   p1<-ks.test(data1$y1[data1$y1<.25],
               data2$y2[data2$y2<.25],
@@ -413,15 +540,43 @@ tempTest <- function(apCounts,
    }
     plist[[idx]]<-data.frame(alt=alt,
                              p=p,
+                             pLess[idx],
+                             pGreat[idx],
                              stringsAsFactors = F)
   }
   
   plist<-do.call(rbind,plist)
-  plist$p <-signif(plist$p, digits=3)
+  plist$p <-format(plist$p, scientific = T,digits=3)
   
+  
+  ksG<-ks.test(x=data1$y1,
+                y=data2$y2,
+                alternative = 'g')$p.value
+  
+  ksL<-ks.test(x=data1$y1,
+               y=data2$y2,
+               alternative = 'l')$p.value
+  
+  if(ksL>ksG){
+    ksOA<-ksG
+    if(p<=pval){
+      alt<-'ap>nap'
+    }else{
+      alt<-'ap=nap'
+    }
+  }else{
+    ksOA<-ksL
+    if(p<=pval){
+      alt<-'ap<nap'
+    }else{
+      alt<-'ap=nap'
+    }
+  }
+  ksOA<-format(ksOA,scientific = T, digits = 3)
   # ks plot ----
   g2<-ggplot()+
     theme_bw()+
+    ggtitle(value)+
     xlab("Presence in species") +
     ylab("KS EDCF") +    geom_rect(aes(xmin = 0, xmax = 0.25,
                   ymin = 0, ymax = 1,
@@ -451,39 +606,47 @@ tempTest <- function(apCounts,
              x=c(0.125,
                  0.375,
                  0.625,
-                 0.875),
+                 0.875,
+                 0.5),
              y=c(.95,
                  .95,
                  .95,
-                 .95),
+                 .95,
+                 0.5),
              label=c(paste0(plist$alt[1],'\np-val: ',plist$p[1]),
                      paste0(plist$alt[2],'\np-val: ',plist$p[2]),
                      paste0(plist$alt[3],'\np-val: ',plist$p[3]),
-                     paste0(plist$alt[4],'\np-val: ',plist$p[4])),
-             size = c(3,3,3,3),
+                     paste0(plist$alt[4],'\np-val: ',plist$p[4]),
+                     paste0('Over all p-val: ',ksOA,'\n',alt)),
+             size = c(3,3,3,3,3),
              hjust = c('center',
                        'center',
                        'center',
-                       'center'))+
+                       'center',
+                       'center'),
+             fill=c(alpha('white',0.5),
+                    alpha('white',0.5),
+                    alpha('white',0.5),
+                    alpha('white',0.5),
+                   alpha('green',alpha = 0.5)))+
     scale_fill_manual("",guide=F,
                       values = c('ap>nap'=alpha('blue',alpha = 0.15),
                                  'ap<nap'=alpha('red',alpha = 0.15),
                                  'ap=nap'=alpha('white',0)))+
-    scale_color_manual("",values = c('mean'='red',
-                                     'AP' = 'blue',
+    scale_color_manual("",values = c('AP' = 'blue',
                                      'nAP'= 'red'))
-  
+  g2
   
   plot(g1)
   # save ----
   if(save){
-    fileName=file.path(dirFig,'violin.pdf')
+    fileName=file.path(dirFig,paste0(value,'violin.pdf'))
     ggsave(filename = fileName, 
            plot = g1,
            device = "pdf",
            width = 11,height = 8,
            dpi=600)
-    fileName=file.path(dirFig,'ksTest.pdf')
+    fileName=file.path(dirFig,paste0(value,'ksTest.pdf'))
     ggsave(filename = fileName, 
            plot = g2,
            device = "pdf",

@@ -655,6 +655,34 @@ KGML2Dataframe <- function(kgml_,
                                   MARGIN = 1,
                                   insertRelation))
     
+    entryMap$map<-NULL
+    entryMap$graphicalType<-NULL
+    entryMap$width<-NULL
+    entryMap$height<-NULL
+    entryMap$fgcolor<-NULL
+    entryMap$bgcolor<-NULL
+    entryMap$pId<-pId
+    entryMap$orgId<-dataType
+    
+    #remove ORTHOLOGY links
+    entryMap<-entryMap[!entryMap$mLink %in%
+                         entryMap$mLink[grep(pattern = 'www_bget[?]K',
+                                             x = entryMap$mLink)],]
+    #remove compound links
+    entryMap<-entryMap[!entryMap$mLink %in%
+                         entryMap$mLink[grep(pattern = 'www_bget[?]C',
+                                             x = entryMap$mLink)],]
+    
+    #remove map links
+    entryMap<-entryMap[!entryMap$mLink %in%
+                         entryMap$mLink[grep(pattern = 'www_bget[?]ec',
+                                             x = entryMap$mLink)],]
+    
+    apply(X = entryMap,
+          MARGIN = 1,
+          insertMap)
+    
+    
   }else{
     # other orgs ----
     #process organism information
@@ -672,6 +700,37 @@ KGML2Dataframe <- function(kgml_,
     apply(X = reactionsRef,
           MARGIN = 1,
           insertReactionOrg)
+    
+    #prepare entryMap to insertion
+    #map<-entryMap
+    
+    entryMap$map<-NULL
+    entryMap$graphicalType<-NULL
+    entryMap$width<-NULL
+    entryMap$height<-NULL
+    entryMap$fgcolor<-NULL
+    entryMap$bgcolor<-NULL
+    entryMap$pId<-pId
+    entryMap$orgId<-dataType
+
+    #remove ORTHOLOGY links
+    entryMap<-entryMap[!entryMap$mLink %in%
+                         entryMap$mLink[grep(pattern = 'www_bget[?]K',
+                                             x = entryMap$mLink)],]
+    #remove compound links
+    entryMap<-entryMap[!entryMap$mLink %in%
+                         entryMap$mLink[grep(pattern = 'www_bget[?]C',
+                                             x = entryMap$mLink)],]
+
+    #remove map links
+    entryMap<-entryMap[!entryMap$mLink %in%
+                         entryMap$mLink[grep(pattern = 'www_bget[?]ec',
+                                             x = entryMap$mLink)],]
+    
+    apply(X = entryMap,
+          MARGIN = 1,
+          insertMap)
+    
     
     }
 

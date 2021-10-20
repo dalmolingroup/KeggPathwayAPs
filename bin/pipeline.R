@@ -23,7 +23,7 @@ rm(list=ls(all=TRUE))
 #Did you change it to your base location?
 dirBase<-"Place here the correct name of your work folder"
 
-dirBase<<-"/home/clovis/Dropbox/projetos/Igor/gitAPs"
+dirBase<<-"/home/clovis/Doutorado/Projetos/Igor/gitAPs"
 
 #figures
 dirFig<<-file.path(dirBase,"figures")
@@ -102,9 +102,26 @@ generateDataFromKGML(dirBase = dirBase,
                      dataType = 'orgs',
                      skip = T)
 
-analiseData(skip = F)
+analiseData(skip = F, sd = 3, bicaudal = T)
+analiseData(skip = F, sd = 3, bicaudal = T, type = 'taxon', value = 'Eukaryotes')
+analiseData(skip = F, sd = 3, bicaudal = T, type = 'taxon', value = 'Prokaryotes')
+analiseData(skip = F, sd = 3, bicaudal = T, type = 'reino', value = 'Archaea')
+analiseData(skip = F, sd = 3, bicaudal = T, type = 'reino', value = 'Bacteria')
+analiseData(skip = F, sd = 3, bicaudal = T, type = 'reino', value = 'Animals')
+analiseData(skip = F, sd = 3, bicaudal = T, type = 'reino', value = 'Fungi')
+analiseData(skip = F, sd = 3, bicaudal = T, type = 'reino', value = 'Plants')
+analiseData(skip = F, sd = 3, bicaudal = T, type = 'reino', value = 'Protists')
 
-showGraph(pathway = "ec00040", removeFake = T,label = "enzyme")
+
+getEdgesFromPath(pathway = 'ec00010', org = 'hsa')
+g<-getGraphFromPath(pathway = 'ec00010',org = 'cel')
+f<-g[[2]]
+E(f)
+
+class(fff)
+
+
+showGraph(pathway = "ec00040",label = "enzyme", org = 'hsa')
 
 showGraphOld(pathway = "ec00040", removeFake = T)
 ecs<-c('ec:5.1.3.3','ec:2.7.1.147','ec:2.7.1.2','ec:2.7.1.63',

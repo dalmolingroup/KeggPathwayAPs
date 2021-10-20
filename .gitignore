@@ -1,5 +1,16 @@
 data/database/dictionary.db
+data/database/dictionaryBkp.db
 !data/kgml/ec
 !data/kgml/hsa
 !data/kgml/mmu
+!data/kgml/ath
+!data/kgml/cel
+!data/kgml/dme
+!data/kgml/sce
 data/kgml/*
+data/database/model.dbm
+figures/*
+log/*
+others
+bin/.RData
+bin/.Rhistory

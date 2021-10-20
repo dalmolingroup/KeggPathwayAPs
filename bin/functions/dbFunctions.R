@@ -1440,7 +1440,7 @@ getEdgesFromEcs <- function(ecs,
   return(edges)
 }
 
-getEdgesFromPath <- function(pathway){
+getEdgesFromPath <- function(pathway, org = NA){
   #retrive edges from a pathway graph using
   # enzime ecs identification
   
@@ -1454,18 +1454,20 @@ getEdgesFromPath <- function(pathway){
   pathway<- paste0('"',pathway,'"')
   # ecs<- paste0('"',ecs,'"')
   # ecs <- do.call(paste, c(as.list(ecs), sep = ","))
-  sql <- paste0(
+  if(is.na(org)){
+    sql <- paste0(
     'SELECT c1.cName as "from", 
             c2.cName as "to",
             e.nId as "nId",
             e.rName as "rName",
-            e.nName as "eName", 
+            n.eName as "eName", 
             e.type  
-      FROM edges as e INNER JOIN  
+      FROM edges as e INNER JOIN 
+        nodes as n on n.nId = e.nId INNER JOIN
       	reaction as r on r.rId = e.nId INNER JOIN  
       	wAllNodes as c1 on c1.cId = e.subs INNER JOIN  
       	wAllNodes as c2 on c2.cId = e.prod  
-      WHERE nId in (
+      WHERE e.nId in (
       	SELECT mainRId  
       	FROM reactionAssociation  
       	where rId in (
@@ -1473,6 +1475,31 @@ getEdgesFromPath <- function(pathway){
       		reacOnPath as ep on ep.rId = r.rId INNER JOIN  
       		path as p on p.pId = ep.pId  
       		where pName = ',pathway,'))')
+  }else{
+    org<- paste0('"',org,'"')
+    sql <- paste0(
+      'SELECT c1.cName as "from", 
+    c2.cName as "to",
+    e.nId as "nId",
+    e.rName as "rName",
+    n.eName as "eName", 
+    e.type 
+    FROM edges as e INNER JOIN  
+    nodes as n on n.nId = e.nId INNER JOIN
+    reaction as r on r.rId = e.nId INNER JOIN  
+    wAllNodes as c1 on c1.cId = e.subs INNER JOIN  
+    wAllNodes as c2 on c2.cId = e.prod  
+    WHERE n.nId in (
+      SELECT nId  
+      FROM nodebyorgs as nog INNER JOIN  
+      path as p on p.pId = nog.pId  
+      WHERE pName = ',pathway,' AND
+      org = ',org,')')
+    }
+  # e.nName as "eName", #replaced
+  # nodes as n on n.nId = e.nId INNER JOIN #added
+  # WHERE e.nId in ( # add e.
+    
   sql <- gsub(pattern = '\t',replacement = '',sql)
   sql <- gsub(pattern = '\n',replacement = '',sql)
   sql
@@ -1490,12 +1517,13 @@ getEdgesFromPath <- function(pathway){
 
 getGraphFromPath<-function(pathway,
                     removeFake = T,
-                    auxInfo = F){
+                    auxInfo = T,
+                    org = NA){
   closeDb <<- F
   createDbConnection()
   #get edges from path
-  edges<-getEdgesFromPath(pathway = pathway)
-  
+    edges<-getEdgesFromPath(pathway = pathway, org)
+
   #get coord of compounds for plot
   sql<-paste0('select cName, x, y
               FROM compOnPath as cp INNER JOIN
@@ -1595,18 +1623,20 @@ getGraphFromPath<-function(pathway,
 
 }
 
-
 showGraph<-function(pathway,
                     auxInfo = T,
                     label = 'enzyme',
-                    removeFake = T){
+                    removeFake = T,
+                    org = NA){
 
   if(!label %in% c('enzyme','reaction','id')){
     stop('Label must be "enzyme", "reaction" or "id".')
   }
+  
   lGraph<-getGraphFromPath(pathway = pathway,
-                   removeFake = removeFake,
-                   auxInfo = auxInfo)
+                           removeFake = removeFake,
+                           auxInfo = auxInfo,
+                           org = org)
   g1<-lGraph[[1]]
   g2 <-lGraph[[2]]
   # coords1<-lGraph[[3]]
@@ -1789,7 +1819,7 @@ cleanedLineGraph <- function(g1, removeFake = F){
                       stringsAsFactors = F)
   
   #remove duplicity
-  g3<-as_data_frame(g2,what = "edges")
+  g3<-igraph::as_data_frame(g2,what = "edges")
   
   nrow(g3[g3$from == g3$to,])
   sum(duplicated(vNames$label))
@@ -2024,7 +2054,7 @@ createNodeTable <- function(){
   
   counter <<- 1
   total <<- length(nodes)
-  idx<-3
+  idx<-22
   for (idx in 1:total) {
     cat("Inserting node [",counter,"of",total,"]\n")
     counter<<-counter+1
@@ -2187,11 +2217,74 @@ insertReactionOrg<-function(reaction){
 
 }
 
-getOrgCounts <- function(){
+#mapL<-as.vector(map[1,]) #debug
+insertMap<-function(mapL){
+  eId<-mapL["eId"]
+  pId <- mapL["pId"]
+  orgId <- mapL["orgId"]
+  link<- mapL["mLink"]
+  
+  table <- "mapInfo"
+  fields <- c("eId","pId","orgId")
+  values<-c(paste0('"',eId,'"'),
+            paste0('"',pId,'"'),
+            paste0('\'',orgId,'\''))
+  
+  exist <- searchValue(table, fields, values)
+  if(exist == 0 ){ # Not Exists
+    sql <- paste0('INSERT INTO mapInfo
+                    VALUES (',
+                  pId,',',
+                  eId,',\'',
+                  orgId,'\',\'',
+                  link,'\');')
+    #cat(sql,' ',rName,' ',exist,'\n')
+    resQuery <- dbExecute(dbCon,sql) 
+  }
+  
+}
+
+
+getOrgCounts <- function(type = NA,
+                         value = NA){
   dbCon <- createDbConnection()
-  sql <- 'select org, count(*) as count
+  if(is.na(type) | is.na(value)){
+    
+    sql<-"select org, taxon, count(*) as count
+    from nodebyorgs as no INNER JOIN
+    (SELECT DISTINCT orgId, taxon as taxon
+      FROM organism
+      WHERE taxon = \'Eukaryotes\'
+      UNION
+      SELECT DISTINCT orgId, reino as taxon
+      FROM organism
+      WHERE reino = \'Bacteria\'
+      UNION
+      SELECT DISTINCT orgId, reino as taxon
+      FROM organism
+      WHERE reino = \'Archaea\') as o on o.orgId = no.org
+    
+    GROUP by org"
+
+    #old select whit no taxon    
+  # sql <- 'select org, count(*) as count
+  #         from nodebyorgs
+  #         GROUP by org'
+  }else{
+    if(!type %in% c("taxon","reino","filo","class")){
+      cat("The parameter type must be taxon, reino, filo orclass \n\n")
+      return(0)
+    }else{
+      value <- paste0('\'',value,'\'')
+      sql <- paste0('select org, count(*) as count
           from nodebyorgs
-          GROUP by org'
+          WHERE org in (
+                  SELECT orgId
+                  FROM organism
+                  WHERE ',type, ' in ( ',value,') )
+          GROUP by org')
+    }
+  }
   
   orgCounts <- dbGetQuery(dbCon,sql)
   
