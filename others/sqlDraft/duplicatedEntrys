@@ -1,8 +1,0 @@
-select *
-from subsProd as s inner JOIN
-	compound as c on c.cId = s.cid inner join
-	reaction as r on r.rid = s.rId inner JOIN
-	reacOnPath	as rp on rp.rId = r.rId inner JOIN
-	path as p on rp.pId = p.pId
-where secondary == 0 and r.rId = 1743
-

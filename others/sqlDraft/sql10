@@ -1,4 +1,0 @@
-select DISTINCT c.cId, c.cName 
-from compound as c INNER JOIN
-	interaction as s on s.cId = c.cId
-WHERE c.cName ='cpd:C00005'
