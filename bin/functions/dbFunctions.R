@@ -29,13 +29,36 @@ createDB <- function(dbTemplate, dbFile, skip = T){
     cat("Skiping database creation... \n\n")
     return(0)
   }
-  
+  cat("Creating the database. Please wait... \n\n")
   command<-paste("cat ",dbTemplate,
                  " | sqlite3 ", dbFile)
   system(command)
   
 }
 
+unpackDB <- function(dbDir = dbDir,
+         skip = T){
+  if(skip){
+    cat("Skiping database unpacking... \n\n")
+    return(0)
+  }
+  dbFile <- file.path(dbDir,'dictionary.db')
+  cat("Removing the old database. Please wait... \n")
+  if(file.exists(dbFile)){
+    file.remove(dbFile)   
+  }else{
+    cat("Old database not found... \n")
+  }
+  tarFile <- file.path(dbDir,'dictionary.db.tar.bz2')
+  if(!file.exists(tarFile)){
+    stop('File ', tarFile, ' not found...')    
+  }
+  cat("Unpacking the database. Please wait... \n\n")
+  command<-paste0('tar -C ', dbDir,' -xjf ',tarFile)
+  system(command)
+  
+  
+}
 
 getNextId <- function(table){
   # ids for each table
@@ -703,6 +726,9 @@ createNodes <- function(){
         insertEdges)
   
   rm(counter, total)
+  
+  createNodeTable()
+  
 }
 
 
@@ -761,8 +787,8 @@ searchValue <- function(table, fields, values){
       sql<- paste0(sql,' and ')
     }
   }
-  sql
     resQuery <- dbGetQuery(dbCon,sql)
+    #cat(sql,' ',nrow(resQuery),'\n')
     if(nrow(resQuery)==0){
       return(0)
     }else{
@@ -776,6 +802,8 @@ prepareReacAssos <- function(){
   resQuery <- dbExecute(dbCon,sql)
   sql <- "DELETE FROM nodeAlias"
   resQuery <- dbExecute(dbCon,sql)
+  sql <- "DELETE FROM nodes"
+  resQuery <- dbExecute(dbCon,sql)
   sql <- "DELETE FROM edges"
   resQuery <- dbExecute(dbCon,sql)
   sql <- "DELETE FROM fakeNode"
@@ -785,9 +813,15 @@ prepareReacAssos <- function(){
   
   
   sql <- "INSERT INTO reactionAssociation
-          SELECT DISTINCT rId, 0
+          SELECT DISTINCT rId, rId
           FROM reaction;"
   resQuery <- dbExecute(dbCon,sql)
+}
+
+prepareNodeByOrgs <- function(){
+  #prepare the table reactionAssociation to receive data
+  # sql <- "DELETE FROM nodebyorgs"
+  # resQuery <- dbExecute(dbCon,sql)
 }
 
 #reactList2<-reactList[reactList$rId1=="  97",]
@@ -806,8 +840,8 @@ insertReacList <- function(reactList2){
                     where rId = ", reactList2[idx]," and 
                     mainRId != 0;")
       resQuery <- dbGetQuery(dbCon,sql)
-      if(nrow(resQuery) > 0){
-        cat("Reaction", reactList2[idx], 'already processed. Overwriting!')
+      if(resQuery[1,1] != resQuery[1,2]){
+        cat("Reaction", reactList2[idx], 'already processed. Overwriting\n!')
       }
       sql<-paste0('UPDATE reactionAssociation
           SET mainRId = ',reactList2[2],'
@@ -822,7 +856,7 @@ insertEnzymeAssos<-function(){
   
 }
 
-# reactList2<-reactList[4164,] #debug
+# reactList2<-reactList[78,] #debug
 # insertEdges(reactList2)
 #reactList2<-reactList[reactList$cpd==" I s1021 I s1022 I p835",]
 insertEdges <- function(reactList2){
@@ -856,7 +890,6 @@ insertEdges <- function(reactList2){
                     enzReac as er on er.eId = e.eId
                 WHERE er.rId in (', reacts,')
                 order by eName')
-
   eNames<- dbGetQuery(dbCon,sql)
   if(nrow(eNames) == 0 ){
     cat(file = logFile,'error in ',nId, reactList2,'\n',append = T)
@@ -887,6 +920,7 @@ insertEdges <- function(reactList2){
     nName<-paste0(nName,"+")
   }
   repName<-checkNewName(name = nName,
+                        table = 'edges',
                        type = 'n')
   if(repName > 0){
     nName <- paste0(nName,"_",repName)
@@ -897,6 +931,7 @@ insertEdges <- function(reactList2){
     rName<-paste0(rName,"+")
   }
   repName<-checkNewName(name = rName,
+                        table = 'edges',
                         type = 'r')
   if(repName > 0){
     rName <- paste0(rName,"_",repName)
@@ -910,6 +945,7 @@ insertEdges <- function(reactList2){
                 eNames[idx,1],
                 ',"e")')
     resQuery <- dbExecute(dbCon,sql)
+    
   }
   for(idx in 1:nrow(rNames)){
     sql<-paste0('INSERT INTO nodeAlias
@@ -1327,11 +1363,11 @@ keggErrorsFix <- function(){
   }
   
   #enzymes reactions erros
-  sql<- 'INSERT INTO enzReac VALUES(3, 2824);'
+  sql<- 'INSERT INTO enzReac VALUES(3, 2825);'
   resQuery <- dbExecute(dbCon,sql) 
   sql<- 'INSERT INTO enzReac VALUES(123, 183);'
   resQuery <- dbExecute(dbCon,sql) 
-  sql<- 'INSERT INTO enzReac VALUES(345, 470);'
+  sql<- 'INSERT INTO enzReac VALUES(345, 471);'
   resQuery <- dbExecute(dbCon,sql) 
   
   
@@ -1404,7 +1440,7 @@ getEdgesFromEcs <- function(ecs,
   return(edges)
 }
 
-getEdgesFromPath <- function(pathway){
+getEdgesFromPath <- function(pathway, org = NA){
   #retrive edges from a pathway graph using
   # enzime ecs identification
   
@@ -1418,18 +1454,20 @@ getEdgesFromPath <- function(pathway){
   pathway<- paste0('"',pathway,'"')
   # ecs<- paste0('"',ecs,'"')
   # ecs <- do.call(paste, c(as.list(ecs), sep = ","))
-  sql <- paste0(
+  if(is.na(org)){
+    sql <- paste0(
     'SELECT c1.cName as "from", 
             c2.cName as "to",
             e.nId as "nId",
             e.rName as "rName",
-            e.nName as "eName", 
+            n.eName as "eName", 
             e.type  
-      FROM edges as e INNER JOIN  
+      FROM edges as e INNER JOIN 
+        nodes as n on n.nId = e.nId INNER JOIN
       	reaction as r on r.rId = e.nId INNER JOIN  
       	wAllNodes as c1 on c1.cId = e.subs INNER JOIN  
       	wAllNodes as c2 on c2.cId = e.prod  
-      WHERE nId in (
+      WHERE e.nId in (
       	SELECT mainRId  
       	FROM reactionAssociation  
       	where rId in (
@@ -1437,6 +1475,31 @@ getEdgesFromPath <- function(pathway){
       		reacOnPath as ep on ep.rId = r.rId INNER JOIN  
       		path as p on p.pId = ep.pId  
       		where pName = ',pathway,'))')
+  }else{
+    org<- paste0('"',org,'"')
+    sql <- paste0(
+      'SELECT c1.cName as "from", 
+    c2.cName as "to",
+    e.nId as "nId",
+    e.rName as "rName",
+    n.eName as "eName", 
+    e.type 
+    FROM edges as e INNER JOIN  
+    nodes as n on n.nId = e.nId INNER JOIN
+    reaction as r on r.rId = e.nId INNER JOIN  
+    wAllNodes as c1 on c1.cId = e.subs INNER JOIN  
+    wAllNodes as c2 on c2.cId = e.prod  
+    WHERE n.nId in (
+      SELECT nId  
+      FROM nodebyorgs as nog INNER JOIN  
+      path as p on p.pId = nog.pId  
+      WHERE pName = ',pathway,' AND
+      org = ',org,')')
+    }
+  # e.nName as "eName", #replaced
+  # nodes as n on n.nId = e.nId INNER JOIN #added
+  # WHERE e.nId in ( # add e.
+    
   sql <- gsub(pattern = '\t',replacement = '',sql)
   sql <- gsub(pattern = '\n',replacement = '',sql)
   sql
@@ -1454,24 +1517,13 @@ getEdgesFromPath <- function(pathway){
 
 getGraphFromPath<-function(pathway,
                     removeFake = T,
-                    auxInfo = F){
-  closeDb <- F
-  if(!exists("dbCon")){
-    closeDb <- T
-    dbDir<<-file.path(dirBase,"data","database")
-    dbFile<<-file.path(dbDir,"dictionary.db")
-    #conect and test dictionary
-    dbCon <<- dbConnect(RSQLite::SQLite(), dbFile)
-  }else if(!dbIsValid(dbCon)){
-    closeDb <- T
-    dbDir<<-file.path(dirBase,"data","database")
-    dbFile<<-file.path(dbDir,"dictionary.db")
-    #conect and test dictionary
-    dbCon <<- dbConnect(RSQLite::SQLite(), dbFile)
-  }    
+                    auxInfo = T,
+                    org = NA){
+  closeDb <<- F
+  createDbConnection()
   #get edges from path
-  edges<-getEdgesFromPath(pathway = pathway)
-  
+    edges<-getEdgesFromPath(pathway = pathway, org)
+
   #get coord of compounds for plot
   sql<-paste0('select cName, x, y
               FROM compOnPath as cp INNER JOIN
@@ -1571,18 +1623,20 @@ getGraphFromPath<-function(pathway,
 
 }
 
-
 showGraph<-function(pathway,
                     auxInfo = T,
                     label = 'enzyme',
-                    removeFake = T){
+                    removeFake = T,
+                    org = NA){
 
   if(!label %in% c('enzyme','reaction','id')){
     stop('Label must be "enzyme", "reaction" or "id".')
   }
+  
   lGraph<-getGraphFromPath(pathway = pathway,
-                   removeFake = removeFake,
-                   auxInfo = auxInfo)
+                           removeFake = removeFake,
+                           auxInfo = auxInfo,
+                           org = org)
   g1<-lGraph[[1]]
   g2 <-lGraph[[2]]
   # coords1<-lGraph[[3]]
@@ -1765,7 +1819,7 @@ cleanedLineGraph <- function(g1, removeFake = F){
                       stringsAsFactors = F)
   
   #remove duplicity
-  g3<-as_data_frame(g2,what = "edges")
+  g3<-igraph::as_data_frame(g2,what = "edges")
   
   nrow(g3[g3$from == g3$to,])
   sum(duplicated(vNames$label))
@@ -1901,14 +1955,24 @@ removeFakeNodes<-function(){
 }
 
 checkNewName <- function(name,
+                         table,
                          type){
-  if(!type %in% c('n','r')){
-    stop('Use "n" for node name, and "r"for reaction name')
+  if(table == 'edges'){
+    if(!type %in% c('n','r')){
+      stop('Use "n" for node name, and "r" for reaction name')
+    }
+    sql <- paste0('SELECT COUNT(*) as qtd
+          FROM ',table,
+                  ' WHERE ',type,'Name = "', name,'";')
+  }else if (table == 'nodes'){
+    if(!type %in% c('e','r')){
+      stop('Use "e" for enzyme name, and "r" for reaction name')
+    }
+    sql <- paste0('SELECT COUNT(*) as qtd
+          FROM ',table,
+          ' WHERE ',type,'Name = "', name,'";')
+    
   }
-  sql <- paste0('SELECT COUNT(*) as qtd
-          FROM edges
-          WHERE ',type,'Name = "', name,'";')
-  
   return(dbGetQuery(dbCon,sql)[1,1])
 }
 
@@ -1981,6 +2045,375 @@ getPIdFromName <- function(pathway){
   }
   return(pId)
 }
+
+createNodeTable <- function(){
+  sql<- 'SELECT DISTINCT nId 
+        FROM nodeAlias
+        ORDER BY nId'
+  nodes <- dbGetQuery(dbCon,sql)[,1]
+  
+  counter <<- 1
+  total <<- length(nodes)
+  idx<-22
+  for (idx in 1:total) {
+    cat("Inserting node [",counter,"of",total,"]\n")
+    counter<<-counter+1
+    
+    sql <- paste0(
+            'SELECT eName
+            FROM nodeAlias as na INNER JOIN
+            	enzime as e on na.childId = e.eId
+            WHERE type = "e" AND
+            		na.nId = ', nodes[idx],
+            ' ORDER BY eName')
+    eNames <- dbGetQuery(dbCon,sql)[,1]
+    eName <- eNames[1]
+    if(length(eNames)>1){
+      eName<-paste0(eName,"+")
+    }
+    eNameTmp <- eName
+    counter2 <- 1
+    repeat{
+      repName<-checkNewName(name = eNameTmp,
+                            table = 'nodes',
+                            type = 'e')
+      if(repName == 0){
+        break
+      }
+      eNameTmp <- paste0(eName,"_",counter2)
+      counter2 <- counter2 + 1
+      # cat(eNameTmp,'\n')
+    }
+    eName <- eNameTmp
+
+    sql <- paste0(
+      'SELECT rName
+            FROM nodeAlias as na INNER JOIN
+            	reaction as r on na.childId = r.rId
+            WHERE type = "r" AND
+            		na.nId = ', nodes[idx],
+      ' ORDER BY rName')
+    rNames <- dbGetQuery(dbCon,sql)[,1]
+    rName <- rNames[1]
+    if(length(rNames)>1){
+      rName<-paste0(rName,"+")
+    }
+    repeat{
+      repName<-checkNewName(name = rName,
+                            table = 'nodes',
+                            type = 'r')
+      if(repName == 0){
+        break
+      }
+      rName <- paste0(rName,"*")
+    }
+    sql <- paste0('INSERT INTO nodes
+                  VALUES (',
+                  nodes[idx],',"',
+                  eName,'","',
+                  rName,'");')
+    resQuery <- dbExecute(dbCon,sql)
+  }
+  
+}
+
+
+createDbConnection <- function(){
+  if(!exists("dbCon")){
+    closeDb <<- T
+    dbDir<<-file.path(dirBase,"data","database")
+    dbFile<<-file.path(dbDir,"dictionary.db")
+    #conect and test dictionary
+    dbCon <<- dbConnect(RSQLite::SQLite(), dbFile)
+  }else if(!dbIsValid(dbCon)){
+    closeDb <<- T
+    dbDir<<-file.path(dirBase,"data","database")
+    dbFile<<-file.path(dbDir,"dictionary.db")
+    #conect and test dictionary
+    dbCon <<- dbConnect(RSQLite::SQLite(), dbFile)
+  }    
+  
+  return(dbCon)
+}
+
+
+getPathInfo <- function(pathwayinfo, 
+                        orgName){
+    table <- "path"
+    fields <- "pName"
+    
+    pName<- sub(pattern = "path:",
+                replacement = '', 
+                x=pathwayinfo$name)
+    pNameEC <- sub(pattern = orgName,
+                 replacement = 'ec',
+                 x = pName)
+    pDesc<-pathwayinfo$title
+    pImage<-pathwayinfo$image
+    pLink <- pathwayinfo$link
+    
+    values<-paste0('"',pNameEC,'"')
+    
+    #pathway exists?
+    nextId <- searchValue(table, fields, values)
+    if(nextId == 0 ){ # Not Exists
+      stop("Pathway ", pName,' not found!')
+    }
+    return(list(nextId, pName))
+    
+}
+
+
+#reaction<-as.vector(reactionsRef[2,]) #debug
+insertReactionOrg<-function(reaction){
+  blFile <- file.path(dbDir,"blacklist")
+  blackList<-read.csv(file = blFile,
+                      header = T, 
+                      stringsAsFactors =F)
+  table <- "reaction"
+  fields <- c("rName","rReversible")
+  rName <- as.character(reaction["rName"])
+  rType <- as.character(reaction["rType"])
+  if(rName %in% blackList$Reaction){
+    rType <- blackList$Reversible[blackList$Reaction == rName]
+  }else{
+    rType <- ifelse(rType == 'reversible', 1,0)
+  }
+  oldId<-reaction["rId"]
+  pId <- reaction["pId"]
+  org <- reaction["org"]
+  
+  values<-c(paste0('"',rName,'"'),
+            paste0('"',rType,'"'))
+  #reaction exists?
+  nextId <- searchValue(table, fields, values)
+  if(nextId ==0 ){ # Not Exists
+    cat("Reaction ",rName," not found -",currentFile,"\n")
+    cat(file = logFile,"Reaction ",rName," not found -",currentFile,"\n",append = T)
+    return(0)
+  }
+  sql <- paste0('SELECT mainRId
+                FROM reactionAssociation
+                WHERE rId = ', nextId,';')
+  nId <- dbGetQuery(dbCon,sql)[,1]
+
+  table <- "nodebyorgs"
+  fields <- c("nId","pId","org")
+  values<-c(paste0('"',nId,'"'),
+            paste0('"',pId,'"'),
+            paste0('\'',org,'\''))
+  
+  exist <- searchValue(table, fields, values)
+  if(exist == 0 ){ # Not Exists
+    sql <- paste0('INSERT INTO nodebyorgs
+                    VALUES (',
+                  nId,',',
+                  pId,',\'',
+                  org,'\');')
+    #cat(sql,' ',rName,' ',exist,'\n')
+    resQuery <- dbExecute(dbCon,sql) 
+    
+  }
+
+}
+
+#mapL<-as.vector(map[1,]) #debug
+insertMap<-function(mapL){
+  eId<-mapL["eId"]
+  pId <- mapL["pId"]
+  orgId <- mapL["orgId"]
+  link<- mapL["mLink"]
+  
+  table <- "mapInfo"
+  fields <- c("eId","pId","orgId")
+  values<-c(paste0('"',eId,'"'),
+            paste0('"',pId,'"'),
+            paste0('\'',orgId,'\''))
+  
+  exist <- searchValue(table, fields, values)
+  if(exist == 0 ){ # Not Exists
+    sql <- paste0('INSERT INTO mapInfo
+                    VALUES (',
+                  pId,',',
+                  eId,',\'',
+                  orgId,'\',\'',
+                  link,'\');')
+    #cat(sql,' ',rName,' ',exist,'\n')
+    resQuery <- dbExecute(dbCon,sql) 
+  }
+  
+}
+
+
+getOrgCounts <- function(type = NA,
+                         value = NA){
+  dbCon <- createDbConnection()
+  if(is.na(type) | is.na(value)){
+    
+    sql<-"select org, taxon, count(*) as count
+    from nodebyorgs as no INNER JOIN
+    (SELECT DISTINCT orgId, taxon as taxon
+      FROM organism
+      WHERE taxon = \'Eukaryotes\'
+      UNION
+      SELECT DISTINCT orgId, reino as taxon
+      FROM organism
+      WHERE reino = \'Bacteria\'
+      UNION
+      SELECT DISTINCT orgId, reino as taxon
+      FROM organism
+      WHERE reino = \'Archaea\') as o on o.orgId = no.org
+    
+    GROUP by org"
+
+    #old select whit no taxon    
+  # sql <- 'select org, count(*) as count
+  #         from nodebyorgs
+  #         GROUP by org'
+  }else{
+    if(!type %in% c("taxon","reino","filo","class")){
+      cat("The parameter type must be taxon, reino, filo orclass \n\n")
+      return(0)
+    }else{
+      value <- paste0('\'',value,'\'')
+      sql <- paste0('select org, count(*) as count
+          from nodebyorgs
+          WHERE org in (
+                  SELECT orgId
+                  FROM organism
+                  WHERE ',type, ' in ( ',value,') )
+          GROUP by org')
+    }
+  }
+  
+  orgCounts <- dbGetQuery(dbCon,sql)
+  
+  dbDisconnect(dbCon) 
+  
+  return(orgCounts)
+}
+
+getAPCountByOrg <- function(orgs){
+  dbCon <- createDbConnection()
+
+  orgCount <- length(orgs)
+
+  condition <-paste0(orgs, collapse = '\',\'')
+  condition <- paste0('\'',condition,'\'')
+  
+  sql <- paste0(
+    'SELECT p.pName, no.pId, n.eName, no.nId, n.rName, nm.isAP, count(*) as occurrences
+      FROM nodebyorgs as no INNER JOIN
+      nodemetric as nm on nm.pId = no.pId AND
+      nm.nId = no.nId INNER JOIN
+      nodes as n on n.nId = nm.nId INNER JOIN
+      path as p on p.pId = no.pId
+      WHERE org in (',condition,')
+      GROUP BY no.nId, no.pId
+      ORDER BY no.pId, no.nId')
+  APCounts <- dbGetQuery(dbCon,sql)
+  dbDisconnect(dbCon)
+  # Remove proteins with zero occurrence
+  APCounts$percentage <- APCounts$occurrences/orgCount
+  APCounts$total<- orgCount
+  
+  #**************************************************************************##
+  # Apply a normalization:                                              #
+  # 100% of occurrence in a pathway can be compared with 50% of other pathway #
+  #**************************************************************************##
+  
+  # Get the unique pathways
+  uniquePathways <- unique(APCounts$pName)
+  
+  # Calculates the normalized frequency
+  for (item in uniquePathways) {
+    # Max frequency in a pathway
+    pathwayMaxFrequency <- max(APCounts$percentage[APCounts$pName==item])
+    
+    # Min frequency in a pathway
+    pathwayMinFrequency <- min(APCounts$percentage[APCounts$pName==item])
+    
+    # Normalized frequency for each protein
+    APCounts$nPercent[APCounts$pName==item] <-
+      (APCounts$percentage[APCounts$pName==item]-pathwayMinFrequency)/
+      (pathwayMaxFrequency-pathwayMinFrequency)
+  }
+  
+  # Fix for NAN cases (when min and max frequency have the same values)
+  APCounts$nPercent[is.nan(APCounts$nPercent)] <- APCounts$percentage[is.nan(APCounts$nPercent)]/100
+  
+  return(APCounts)
+}
+
+stratifyAPs <- function(apCounts,
+                        interval = 0.10,
+                        normalized = T){
+  if(normalized){
+    apCounts$percent<-apCounts$nPercent
+  }else{
+    apCounts$percent<-apCounts$percentage
+  }
+  
+  # Filter dataSet from proteins with ZERO frequency
+  apCounts <- apCounts[!apCounts$occurrences==0,]
+  
+  # Order the dataSet
+  apCounts <- apCounts[order(apCounts$percent, decreasing = T),]
+  
+  
+  #*****************************************##
+  # Generate the stratified     distribution #
+  #*****************************************##
+  
+  # Count the bottlenecks and non-bottlenecks
+  countsBase <- c(APs=nrow(apCounts[apCounts$isAP ==1,]), 
+                  nAPs=nrow(apCounts[apCounts$isAP !=1,]))
+  
+  proportion<- countsBase[1]/(countsBase[1]+countsBase[2])
+  
+  ranges<-seq(0,1,interval)
+  
+  # Create a dataFrame for the result
+  distribution <- list()
+  # Loop over all dataSet
+  idx=1
+  for (idx in 1:(length(ranges)-1)) {
+    # Set the cumulative range [initVal:range]
+    initVal <- ranges[idx]
+    
+    # Retrieve the cumulative proteins
+    if(idx == length(ranges)-1){
+      top <- apCounts[apCounts$percent>=ranges[idx]&
+                        apCounts$percent<=ranges[idx+1], ]
+      range<-ranges[idx+1]
+    }else{
+      top <- apCounts[apCounts$percent>=ranges[idx]&
+                        apCounts$percent<ranges[idx+1], ]
+      range<-ranges[idx+1]-0.001
+    }
+    # Number of draws
+    drawn <- nrow(top)
+    
+    # The number of articulation points in the accumulated group
+    AP <- nrow(top[top$isAP == 1,])
+    nAP <- nrow(top[top$isAP == 0,])
+    if(AP+nAP != drawn ){
+      stop('Number of AP + nAP doesn\'t match with totoal')
+    }
+
+    distribution[[idx]]<- data.frame(ini=initVal,
+                              range=range,
+                              AP=AP,
+                              nAP=nAP,
+                              stringsAsFactors = F)
+  }
+  
+  distribution <- do.call(rbind,distribution)
+  
+  return(list(distribution,proportion))
+}
+
+
 #FIM ----
 # searchValue <- function(table, field, value, pId = NA){
 #   if(is.na(pId)){

@@ -3,11 +3,16 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.9.2" last-position="0,0" last-zoom="0.65" max-obj-count="26"
+<dbmodel pgmodeler-ver="0.9.3-alpha" last-position="0,0" last-zoom="0.65" max-obj-count="32"
 	 default-schema="public" default-owner="postgres">
 <database name="APs" encoding="UTF8" lc-collate="pt_BR.UTF-8" lc-ctype="pt_BR.UTF-8" is-template="false" allow-conns="true">
 	<role name="postgres"/>
 	<tablespace name="pg_default"/>
+	<comment><![CDATA[Database used to generate the grpj of KEGG maps.
+Blue tables identifies the raw information extracte from KEGG;
+Green tables identifies the final information, and;
+Orange tables identifies the tables used for an intermediate prossess step to generate the final information
+]]></comment>
 </database>
 
 <tag name="Nodes">
@@ -15,48 +20,73 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	<style id="table-ext-body" colors="#fcfcfc,#fcfcfc,#808080"/>
 	<style id="table-name" colors="#000000"/>
 	<style id="table-schema-name" colors="#000000"/>
-	<style id="table-title" colors="#fcaf3e,#fcaf3e,#f57900"/>
+	<style id="table-title" colors="#57e389,#57e389,#2ec27e"/>
 </tag>
-<schema name="public" layer="0" rect-visible="true" fill-color="#e1e1e1" sql-disabled="true">
+<tag name="preProcess">
+	<style id="table-body" colors="#fcfcfc,#fcfcfc,#808080"/>
+	<style id="table-ext-body" colors="#fcfcfc,#fcfcfc,#808080"/>
+	<style id="table-name" colors="#000000"/>
+	<style id="table-schema-name" colors="#000000"/>
+	<style id="table-title" colors="#ffa348,#ffa348,#c64600"/>
+</tag>
+<schema name="public" layer="0" alias="APsDataBase" rect-visible="true" fill-color="#e1e1e1" sql-disabled="true">
 </schema>
 
-<table name="edges" layer="0" collapse-mode="2" max-obj-count="8">
-	<schema name="public"/>
+<table name="edges" layer="0" collapse-mode="2" max-obj-count="8" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
 	<role name="postgres"/>
-	<tag name="Nodes"/>
-	<position x="408" y="236.889"/>
+	<comment><![CDATA[Contain the infered edges from KEGG pathway map.]]></comment>
+	<tag name="preProcess"/>
+	<position x="460" y="360"/>
 	<column name="nId" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Edge ID comming from Reaction table. ]]></comment>
 	</column>
 	<column name="nName" not-null="true">
 		<type name="text" length="0"/>
+		<comment><![CDATA[This is a temporary name of the edge. 
+For more acuracy, please,  ALLWAYS USE THE FIELD eName FROM TABLE nodes.
+
+It can be :
+a) The EC name of the enzime that intermediate this reaction;
+b) The EC name add with a "+" signal, indicating that exist more than one enzime can role this reaction;
+c) The EC name add with a "_[1-9]" that indicate that enzime can role diferent reactions types.
+d) the EC name preceded of a "f" that indicate this is a fake reaction]]></comment>
 	</column>
 	<column name="rName">
 		<type name="text" length="0"/>
+		<comment><![CDATA[The KEGG name of the reaction]]></comment>
 	</column>
 	<column name="subs" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Substrate ID]]></comment>
 	</column>
 	<column name="prod" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Product ID]]></comment>
 	</column>
 	<column name="type" not-null="true">
 		<type name="text" length="0"/>
+		<comment><![CDATA[Can be "R" for a real reaction and "F" for a fake one]]></comment>
 	</column>
 	<column name="reversible" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Identifies reversible reactions]]></comment>
 	</column>
 </table>
 
-<table name="enzime" layer="0" collapse-mode="2" max-obj-count="3">
-	<schema name="public"/>
+<table name="enzime" layer="0" collapse-mode="2" max-obj-count="3" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
 	<role name="postgres"/>
-	<position x="1428" y="526.222"/>
+	<comment><![CDATA[Contains the list of enzymes as found in KEGG XML]]></comment>
+	<position x="1480" y="940"/>
 	<column name="eId" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Unique identifier of an enzyme]]></comment>
 	</column>
 	<column name="eName" not-null="true">
 		<type name="text" length="0"/>
+		<comment><![CDATA[KEGG name of the enzyme. Here are just listed the enzymes names found on canonical pathway, identifieds by an EC number]]></comment>
 	</column>
 	<column name="eLabel">
 		<type name="text" length="0"/>
@@ -66,221 +96,234 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	</constraint>
 </table>
 
-<table name="path" layer="0" collapse-mode="2" max-obj-count="6">
-	<schema name="public"/>
+<table name="path" layer="0" collapse-mode="2" max-obj-count="6" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
 	<role name="postgres"/>
-	<position x="788" y="766.222"/>
+	<comment><![CDATA[Contains the list of pathways as found in KEGG XML]]></comment>
+	<position x="940" y="860"/>
 	<column name="pId" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Unique identifier of a pathway]]></comment>
 	</column>
 	<column name="pName">
 		<type name="text" length="0"/>
+		<comment><![CDATA[KEGG name of the pathway. ]]></comment>
 	</column>
-	<column name="pDesc" not-null="true">
+	<column name="pOrganism" not-null="true">
 		<type name="text" length="0"/>
+		<comment><![CDATA[Description of the pathway function]]></comment>
 	</column>
 	<column name="pImage">
 		<type name="text" length="0"/>
+		<comment><![CDATA[Internet link for the PNG file of the pathwai on KEGG]]></comment>
 	</column>
 	<column name="pLink">
 		<type name="text" length="0"/>
+		<comment><![CDATA[Internet link for the pathwai on KEGG]]></comment>
 	</column>
 	<constraint name="map_pk" type="pk-constr" table="public.path">
 		<columns names="pId" ref-type="src-columns"/>
 	</constraint>
 </table>
 
-<table name="nodesOnPath" layer="0" collapse-mode="2" max-obj-count="4">
-	<schema name="public"/>
+<table name="reaction" layer="0" collapse-mode="2" max-obj-count="3" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
 	<role name="postgres"/>
-	<tag name="Nodes"/>
-	<position x="642.666" y="464.889"/>
-	<column name="nId">
-		<type name="integer" length="0"/>
-	</column>
-	<column name="pId">
-		<type name="integer" length="0"/>
-	</column>
-	<column name="x">
-		<type name="integer" length="0"/>
-	</column>
-	<column name="y">
-		<type name="integer" length="0"/>
-	</column>
-</table>
-
-<table name="reaction" layer="0" collapse-mode="2" max-obj-count="3">
-	<schema name="public"/>
-	<role name="postgres"/>
-	<position x="428" y="1006.22"/>
+	<comment><![CDATA[Contains the list of reactions as found in KEGG XML]]></comment>
+	<position x="560" y="1120"/>
 	<column name="rId" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Unique identifier of a reaction]]></comment>
 	</column>
 	<column name="rName" not-null="true">
 		<type name="text" length="0"/>
+		<comment><![CDATA[KEGG name of the reaction. Here are just listed the reactionsenzymes names found on canonical pathway]]></comment>
 	</column>
 	<column name="rReversible" not-null="true">
 		<type name="integer" length="0"/>
-		<comment><![CDATA[Can be 0 for irreversible or 1 to reversible]]></comment>
+		<comment><![CDATA[Can be 0 for irreversible or 1 to reversible reactions]]></comment>
 	</column>
 	<constraint name="reaction_pk" type="pk-constr" table="public.reaction">
 		<columns names="rId" ref-type="src-columns"/>
 	</constraint>
 </table>
 
-<table name="compound" layer="0" collapse-mode="2" max-obj-count="3">
-	<schema name="public"/>
+<table name="compound" layer="0" collapse-mode="2" max-obj-count="3" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
 	<role name="postgres"/>
-	<position x="1068" y="1316.22"/>
+	<comment><![CDATA[Contains the list of compounds as found in KEGG XML]]></comment>
+	<position x="1120" y="1440"/>
 	<column name="cId" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Unique identifier of an compound]]></comment>
 	</column>
 	<column name="cName" not-null="true">
 		<type name="text" length="0"/>
+		<comment><![CDATA[KEGG name of a compound. Here are just listed the compound names found on canonical pathway.]]></comment>
 	</column>
 	<column name="cDesc">
 		<type name="text" length="0"/>
+		<comment><![CDATA[A description of the compount]]></comment>
 	</column>
 	<constraint name="compound_pk" type="pk-constr" table="public.compound">
 		<columns names="cId" ref-type="src-columns"/>
 	</constraint>
+	<constraint name="unqcname" type="uq-constr" table="public.compound">
+		<columns names="cName" ref-type="src-columns"/>
+	</constraint>
 </table>
 
-<table name="interaction" layer="0" collapse-mode="2" max-obj-count="3">
-	<schema name="public"/>
+<table name="interaction" layer="0" collapse-mode="2" max-obj-count="3" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
 	<role name="postgres"/>
 	<comment><![CDATA[List of two enzimes related by a compound]]></comment>
-	<position x="1448" y="1006.22"/>
+	<position x="1500" y="1420"/>
 	<column name="eId1" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Unique identifier of the first enzyme]]></comment>
 	</column>
 	<column name="eId2" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Unique identifier of the second enzyme]]></comment>
 	</column>
 	<column name="cId" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Unique identifier of the compound]]></comment>
 	</column>
 </table>
 
-<table name="enzPathNode" layer="0" collapse-mode="2" max-obj-count="3">
-	<schema name="public"/>
-	<role name="postgres"/>
-	<comment><![CDATA[Map the realtion between enzimes, pathways and nodes]]></comment>
-	<tag name="Nodes"/>
-	<position x="788" y="186.222"/>
-	<column name="nId" not-null="true">
-		<type name="integer" length="0"/>
-	</column>
-	<column name="mId" not-null="true">
-		<type name="integer" length="0"/>
-	</column>
-	<column name="eId" not-null="true">
-		<type name="integer" length="0"/>
-	</column>
-</table>
-
-<table name="subsProd" layer="0" collapse-mode="2" max-obj-count="3">
-	<schema name="public"/>
+<table name="subsProd" layer="0" collapse-mode="2" max-obj-count="4" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
 	<role name="postgres"/>
 	<comment><![CDATA[List of substrate and products that belongs to an reaction.]]></comment>
-	<position x="428" y="1306.22"/>
+	<position x="560" y="1440"/>
 	<column name="rId" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Unique identifier of the reaction]]></comment>
 	</column>
 	<column name="cId" not-null="true">
 		<type name="integer" length="0"/>
-		<comment><![CDATA[Substrate ID from compound table]]></comment>
+		<comment><![CDATA[Unique identifier of the compound]]></comment>
 	</column>
 	<column name="spType" not-null="true">
 		<type name="text" length="0"/>
-		<comment><![CDATA[Product ID from compound table]]></comment>
+		<comment><![CDATA[Identifies if the compound is a substract or a product (s or p)]]></comment>
+	</column>
+	<column name="secondary">
+		<type name="smallint" length="0"/>
+		<comment><![CDATA[Identifies if the compound is a primary or secondary one (0 or 1)]]></comment>
 	</column>
 </table>
 
-<table name="enzReac" layer="0" collapse-mode="2" max-obj-count="2">
-	<schema name="public"/>
+<table name="enzReac" layer="0" collapse-mode="2" max-obj-count="2" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
 	<role name="postgres"/>
 	<comment><![CDATA[Enzimes can participate of N reactions and reactions can use N enzimes]]></comment>
-	<position x="575.999" y="675.556"/>
+	<position x="860" y="660"/>
 	<column name="eId" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Unique identifier of  a enzyme]]></comment>
 	</column>
 	<column name="rId" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Unique identifier of reaction]]></comment>
 	</column>
 </table>
 
-<table name="enzOnPath" layer="0" collapse-mode="2" max-obj-count="4">
-	<schema name="public"/>
+<table name="enzOnPath" layer="0" collapse-mode="2" max-obj-count="4" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
 	<role name="postgres"/>
-	<position x="1148" y="766.222"/>
+	<comment><![CDATA[Contains the list of enzymes as found in each pathway]]></comment>
+	<position x="1220" y="960"/>
 	<column name="eId" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Unique identifier of the enzyme]]></comment>
 	</column>
 	<column name="pId" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Unique identifier of the pathway
+]]></comment>
 	</column>
 	<column name="x" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[X coordinate as show in KEGG map]]></comment>
 	</column>
 	<column name="y" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Y coordinate as show in KEGG map]]></comment>
 	</column>
 </table>
 
-<table name="reacOnPath" layer="0" collapse-mode="2" max-obj-count="2">
-	<schema name="public"/>
+<table name="reacOnPath" layer="0" collapse-mode="2" max-obj-count="2" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
 	<role name="postgres"/>
-	<position x="788" y="1006.22"/>
+	<comment><![CDATA[Contains the list of reactions found in each pathway]]></comment>
+	<position x="840" y="1120"/>
 	<column name="rId" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Unique identifier of a reaction]]></comment>
 	</column>
 	<column name="pId" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Unique identifier of a pathway]]></comment>
 	</column>
 </table>
 
-<table name="compOnPath" layer="0" collapse-mode="2" max-obj-count="4">
-	<schema name="public"/>
+<table name="compOnPath" layer="0" collapse-mode="2" max-obj-count="4" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
 	<role name="postgres"/>
-	<position x="1088" y="1006.22"/>
+	<comment><![CDATA[Contains the list of compounds found in each pathway]]></comment>
+	<position x="1140" y="1200"/>
 	<column name="cId" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Unique identifier of the compound]]></comment>
 	</column>
 	<column name="pId" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Unique identifier of the pathway]]></comment>
 	</column>
 	<column name="x" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[X coordinate as show in KEGG map]]></comment>
 	</column>
 	<column name="y" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Y coordinate as show in KEGG map]]></comment>
 	</column>
 </table>
 
-<table name="reactionAssociation" layer="0" collapse-mode="2" max-obj-count="2">
-	<schema name="public"/>
+<table name="reactionAssociation" layer="0" collapse-mode="2" max-obj-count="3" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
 	<role name="postgres"/>
-	<tag name="Nodes"/>
-	<position x="212" y="502.222"/>
+	<comment><![CDATA[Intermediary table used to associate a reaction considered as main and the others with similar role]]></comment>
+	<tag name="preProcess"/>
+	<position x="260" y="620"/>
 	<column name="rId" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Reaction ID of similar reaction]]></comment>
 	</column>
 	<column name="mainRId" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Reaction ID of principal reaction]]></comment>
 	</column>
+	<constraint name="raPk" type="pk-constr" table="public.&quot;reactionAssociation&quot;">
+		<columns names="rId" ref-type="src-columns"/>
+	</constraint>
 </table>
 
-<table name="fakeNode" layer="0" collapse-mode="2" max-obj-count="3">
-	<schema name="public"/>
+<table name="fakeNode" layer="0" collapse-mode="2" max-obj-count="3" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
 	<role name="postgres"/>
-	<tag name="Nodes"/>
-	<position x="137.333" y="250.889"/>
+	<comment><![CDATA[Contaisns all fake nodes ID created in the process]]></comment>
+	<tag name="preProcess"/>
+	<position x="320" y="200"/>
 	<column name="cId" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[FAke node mID]]></comment>
 	</column>
 	<column name="cName" not-null="true">
 		<type name="text" length="0"/>
+		<comment><![CDATA[FAke node name]]></comment>
 	</column>
 	<column name="cDesc">
 		<type name="text" length="0"/>
@@ -290,41 +333,337 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	</constraint>
 </table>
 
-<table name="nodeAlias" layer="0" collapse-mode="2" max-obj-count="4">
-	<schema name="public"/>
+<table name="nodeAlias" layer="0" collapse-mode="2" max-obj-count="3" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
 	<role name="postgres"/>
+	<comment><![CDATA[Contains the association between the node name and enzimes or reactions gruped under those name.]]></comment>
 	<tag name="Nodes"/>
-	<position x="404.239" y="13.3333"/>
+	<position x="760" y="460"/>
 	<column name="nId" not-null="true">
 		<type name="integer" length="0"/>
+		<comment><![CDATA[Node ID. It comes from nodes table]]></comment>
 	</column>
-	<column name="nName" not-null="true">
+	<column name="childId" not-null="true">
 		<type name="text" length="0"/>
-	</column>
-	<column name="childName" not-null="true">
-		<type name="text" length="0"/>
+		<comment><![CDATA[It can be a rId comming from reaction table, or a eId from enzime table.]]></comment>
 	</column>
 	<column name="type" not-null="true">
 		<type name="text" length="0"/>
+		<comment><![CDATA[Identifies from witch table childId is comming from. If it is an 'e' it childId is comming from enzime table. If it is a 'r' the ID is comming from reaction table.]]></comment>
 	</column>
+</table>
+
+<table name="nodes" layer="0" collapse-mode="2" max-obj-count="3" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
+	<role name="postgres"/>
+	<comment><![CDATA[After the KEGG graph is created, is calculated the line graph and the node identification is anotated in this table]]></comment>
+	<tag name="Nodes"/>
+	<position x="660" y="140"/>
+	<column name="nId" not-null="true">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Node ID. Is the same ID grom the tables reaction and edgs]]></comment>
+	</column>
+	<column name="eName" not-null="true">
+		<type name="text" length="0"/>
+		<comment><![CDATA[Name of the node. It can be :
+a) The EC name of the enzime that intermediate this reaction;
+b) The EC name add with a "+" signal, indicating that exist more than one enzime can role this reaction;
+c) The EC name add with a "_[1-9]" that indicate that enzime can role diferent reactions types.
+d) the EC name preceded of a "f" that indicate this is a fake reaction]]></comment>
+	</column>
+	<column name="rName" not-null="true">
+		<type name="text" length="0"/>
+		<comment><![CDATA[Reaction name. The same rule from eName is aplied here]]></comment>
+	</column>
+	<constraint name="nPk" type="pk-constr" table="public.nodes">
+		<columns names="nId" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="nodemetric" layer="0" collapse-mode="2" max-obj-count="19" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
+	<role name="postgres"/>
+	<comment><![CDATA[Contains the metric of the line graph of canonical pathway ]]></comment>
+	<tag name="Nodes"/>
+	<position x="1100" y="140"/>
+	<column name="nId" not-null="true">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Node ID]]></comment>
+	</column>
+	<column name="pId" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="isAP" not-null="true">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Identify if a node is an articulation point (AP). 1 indicate an AP and 0 a non AP (nAP)]]></comment>
+	</column>
+	<column name="connectivity" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="triangles" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="community" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="eccentricity" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="radius" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="diameter" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="degree" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="betweenness" not-null="true">
+		<type name="real" length="0"/>
+	</column>
+	<column name="clusteringCoef" not-null="true">
+		<type name="real" length="0"/>
+	</column>
+	<column name="closenessCoef" not-null="true">
+		<type name="real" length="0"/>
+	</column>
+	<column name="eigenvScore" not-null="true">
+		<type name="real" length="0"/>
+	</column>
+	<column name="authScore" not-null="true">
+		<type name="real" length="0"/>
+	</column>
+	<column name="hubScore" not-null="true">
+		<type name="real" length="0"/>
+	</column>
+	<constraint name="nm_pk" type="pk-constr" table="public.nodemetric">
+		<columns names="nId,pId" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="nodebyorgs" layer="0" collapse-mode="2" max-obj-count="3" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
+	<role name="postgres"/>
+	<comment><![CDATA[Contains the list of the nodes based on the KEGG map of each organism]]></comment>
+	<tag name="Nodes"/>
+	<position x="1420" y="140"/>
+	<column name="nId" not-null="true">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Node ID]]></comment>
+	</column>
+	<column name="pId" not-null="true">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Patgway ID]]></comment>
+	</column>
+	<column name="org" not-null="true">
+		<type name="text" length="0"/>
+		<comment><![CDATA[KEGG organism ID]]></comment>
+	</column>
+	<constraint name="nodeByOrgs_pk" type="pk-constr" table="public.nodebyorgs">
+		<columns names="nId,pId,org" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="organism" layer="0" collapse-mode="2" max-obj-count="7" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
+	<role name="postgres"/>
+	<comment><![CDATA[Contains the list and characteristics of organisms found on KEGG]]></comment>
+	<position x="1440" y="360"/>
+	<column name="orgId" not-null="true">
+		<type name="text" length="0"/>
+		<comment><![CDATA[Unique identifier of an organism. Is the same code used by KEGG.]]></comment>
+	</column>
+	<column name="species" not-null="true">
+		<type name="text" length="0"/>
+		<comment><![CDATA[Name of the specie and it popular name.]]></comment>
+	</column>
+	<column name="taxon" not-null="true">
+		<type name="text" length="0"/>
+		<comment><![CDATA[List if an specie is Eukariote or Procariote]]></comment>
+	</column>
+	<column name="reino" not-null="true">
+		<type name="text" length="0"/>
+		<comment><![CDATA[list the kingdon of the organism]]></comment>
+	</column>
+	<column name="filo">
+		<type name="text" length="0"/>
+		<comment><![CDATA[List the Philo of the organism]]></comment>
+	</column>
+	<column name="class">
+		<type name="text" length="0"/>
+		<comment><![CDATA[Class of the organism]]></comment>
+	</column>
+	<constraint name="organism_pk" type="pk-constr" table="public.organism">
+		<columns names="orgId" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="pathdata" layer="0" collapse-mode="2" max-obj-count="38" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
+	<role name="postgres"/>
+	<comment><![CDATA[This table contains the pathway information imported from KEGG, and updated with our APs Informations.]]></comment>
+	<tag name="Nodes"/>
+	<position x="260" y="960"/>
+	<column name="id" not-null="true">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Same as pId from table path]]></comment>
+	</column>
+	<column name="code" not-null="true">
+		<type name="text" length="0"/>
+		<comment><![CDATA[sams as pName from table path]]></comment>
+	</column>
+	<column name="name">
+		<type name="text" length="0"/>
+		<comment><![CDATA[Main name of the pathway]]></comment>
+	</column>
+	<column name="description">
+		<type name="text" length="0"/>
+		<comment><![CDATA[KEGG description of the pathway]]></comment>
+	</column>
+	<column name="class">
+		<type name="text" length="0"/>
+		<comment><![CDATA[KEGG pathway classification]]></comment>
+	</column>
+	<column name="pathway_map">
+		<type name="text" length="0"/>
+		<comment><![CDATA[KEGG Map name]]></comment>
+	</column>
+	<column name="module">
+		<type name="text" length="0"/>
+		<comment><![CDATA[KEGG module definition
+]]></comment>
+	</column>
+	<column name="disease">
+		<type name="text" length="0"/>
+		<comment><![CDATA[Disease associate to the pathway]]></comment>
+	</column>
+	<column name="dblinks">
+		<type name="text" length="0"/>
+		<comment><![CDATA[GO associated ]]></comment>
+	</column>
+	<column name="ko_pathway">
+		<type name="text" length="0"/>
+		<comment><![CDATA[KO name]]></comment>
+	</column>
+	<column name="reference">
+		<type name="text" length="0"/>
+		<comment><![CDATA[KEGG references annotation]]></comment>
+	</column>
+	<column name="eukaryotes_count">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Number of eukaryotes with this pathway]]></comment>
+	</column>
+	<column name="prokaryotes_count">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Number of prokaryotes with this pathway]]></comment>
+	</column>
+	<column name="animals_count">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Number of animals with this pathway]]></comment>
+	</column>
+	<column name="plants_count">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Number of plants with this pathway]]></comment>
+	</column>
+	<column name="fungi_count">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Number of fungi with this pathway]]></comment>
+	</column>
+	<column name="protists_count">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Number of protists with this pathway]]></comment>
+	</column>
+	<column name="bacteria_count">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Number of  bacterias with this pathway]]></comment>
+	</column>
+	<column name="archaea_count">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Number of archaeass with this pathway]]></comment>
+	</column>
+	<column name="has_network">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="nodes">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Number of nodes in the pathway]]></comment>
+	</column>
+	<column name="edges">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Number of edges in the pathway]]></comment>
+	</column>
+	<column name="total_species">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Number of  species with this pathway]]></comment>
+	</column>
+	<column name="node_highest_impact">
+		<type name="text" length="0"/>
+		<comment><![CDATA[Node that have highest inmpact on the network if deleted]]></comment>
+	</column>
+	<column name="disconnected_nodes">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Number of nodes disconected if the highest impact node is deleted]]></comment>
+	</column>
+	<column name="community">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Number of communities in the network]]></comment>
+	</column>
+	<column name="mean_degree">
+		<type name="numeric" length="0"/>
+		<comment><![CDATA[Mean degree of all nodes in the pathway]]></comment>
+	</column>
+	<column name="mean_betweenness">
+		<type name="numeric" length="0"/>
+		<comment><![CDATA[Mean betweenness of all nodes in the pathway]]></comment>
+	</column>
+	<column name="ap_number">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Number of APs present in the pathway]]></comment>
+	</column>
+	<column name="hap_number">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Number of APs that are also a HUB present in the pathway]]></comment>
+	</column>
+	<column name="hub_number">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Number of HUBs present in the pathway]]></comment>
+	</column>
+	<column name="others_number">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Number of nAPs present in the pathway]]></comment>
+	</column>
+</table>
+
+<table name="mapInfo" layer="0" collapse-mode="2" max-obj-count="4" z-value="0">
+	<schema name="public" alias="APsDataBase"/>
+	<role name="postgres"/>
+	<comment><![CDATA[Contains auxiliary map info]]></comment>
+	<position x="1440" y="620"/>
+	<column name="pId" not-null="true">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Pathway ID]]></comment>
+	</column>
+	<column name="eId" not-null="true">
+		<type name="integer" length="0"/>
+		<comment><![CDATA[Enzyme ID]]></comment>
+	</column>
+	<column name="orgId" not-null="true">
+		<type name="text" length="0"/>
+		<comment><![CDATA[Organims ID]]></comment>
+	</column>
+	<column name="link">
+		<type name="text" length="0"/>
+		<comment><![CDATA[URL for the enzimes description at KEGG]]></comment>
+	</column>
+	<constraint name="mapInfo_pk" type="pk-constr" table="public.&quot;mapInfo&quot;">
+		<columns names="pId,eId,orgId" ref-type="src-columns"/>
+	</constraint>
 </table>
 
 <constraint name="edgFk" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.reaction" table="public.edges">
 	<columns names="nId" ref-type="src-columns"/>
 	<columns names="rId" ref-type="dst-columns"/>
-</constraint>
-
-<constraint name="nxmFk" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.edges" table="public.&quot;nodesOnPath&quot;">
-	<columns names="nId" ref-type="src-columns"/>
-	<columns names="nId" ref-type="dst-columns"/>
-</constraint>
-
-<constraint name="mxnFk" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.path" table="public.&quot;nodesOnPath&quot;">
-	<columns names="pId" ref-type="src-columns"/>
-	<columns names="pId" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="eId1Fk" type="fk-constr" comparison-type="MATCH FULL"
@@ -343,24 +682,6 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.compound" table="public.interaction">
 	<columns names="cId" ref-type="src-columns"/>
 	<columns names="cId" ref-type="dst-columns"/>
-</constraint>
-
-<constraint name="mnIdfx" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.edges" table="public.&quot;enzPathNode&quot;">
-	<columns names="nId" ref-type="src-columns"/>
-	<columns names="nId" ref-type="dst-columns"/>
-</constraint>
-
-<constraint name="mmIdfx_cp" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.path" table="public.&quot;enzPathNode&quot;">
-	<columns names="mId" ref-type="src-columns"/>
-	<columns names="pId" ref-type="dst-columns"/>
-</constraint>
-
-<constraint name="mnIdfx_cp1" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.enzime" table="public.&quot;enzPathNode&quot;">
-	<columns names="eId" ref-type="src-columns"/>
-	<columns names="eId" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="rIfFk" type="fk-constr" comparison-type="MATCH FULL"
@@ -436,20 +757,70 @@ CAUTION: Do not modify this file unless you know what you are doing.
 </constraint>
 
 <constraint name="nnmFk" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.edges" table="public.&quot;nodeAlias&quot;">
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.nodes" table="public.&quot;nodeAlias&quot;">
 	<columns names="nId" ref-type="src-columns"/>
 	<columns names="nId" ref-type="dst-columns"/>
 </constraint>
 
-<relationship name="&quot;rel_nodesOnMap_nodes&quot;" type="relfk" layer="0"
-	 src-table="public.&quot;nodesOnPath&quot;"
-	 dst-table="public.edges" reference-fk="nxmFk"
-	 src-required="false" dst-required="false"/>
+<constraint name="naCh1" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.reaction" table="public.&quot;nodeAlias&quot;">
+	<columns names="nId" ref-type="src-columns"/>
+	<columns names="rId" ref-type="dst-columns"/>
+</constraint>
 
-<relationship name="&quot;rel_nodesOnMap_map&quot;" type="relfk" layer="0"
-	 src-table="public.&quot;nodesOnPath&quot;"
-	 dst-table="public.path" reference-fk="mxnFk"
-	 src-required="false" dst-required="false"/>
+<constraint name="naCh2" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.enzime" table="public.&quot;nodeAlias&quot;">
+	<columns names="nId" ref-type="src-columns"/>
+	<columns names="eId" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="nFk" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.reaction" table="public.nodes">
+	<columns names="nId" ref-type="src-columns"/>
+	<columns names="rId" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="nmfk" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.nodes" table="public.nodemetric">
+	<columns names="nId" ref-type="src-columns"/>
+	<columns names="nId" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="nmfk2" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.path" table="public.nodemetric">
+	<columns names="pId" ref-type="src-columns"/>
+	<columns names="pId" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="nboFk" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.nodemetric" table="public.nodebyorgs">
+	<columns names="pId,nId" ref-type="src-columns"/>
+	<columns names="nId,pId" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="orgPk" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.organism" table="public.nodebyorgs">
+	<columns names="org" ref-type="src-columns"/>
+	<columns names="orgId" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fkMappId" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.path" table="public.&quot;mapInfo&quot;">
+	<columns names="pId" ref-type="src-columns"/>
+	<columns names="pId" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fkMapeId" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.enzime" table="public.&quot;mapInfo&quot;">
+	<columns names="eId" ref-type="src-columns"/>
+	<columns names="eId" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fkMaporgId" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.organism" table="public.&quot;mapInfo&quot;">
+	<columns names="orgId" ref-type="src-columns"/>
+	<columns names="orgId" ref-type="dst-columns"/>
+</constraint>
 
 <relationship name="rel_interaction_enzime" type="relfk" layer="0"
 	 src-table="public.interaction"
@@ -464,21 +835,6 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <relationship name="rel_interaction_compound" type="relfk" layer="0"
 	 src-table="public.interaction"
 	 dst-table="public.compound" reference-fk="cIdFk"
-	 src-required="false" dst-required="false"/>
-
-<relationship name="&quot;rel_enzPathNode_nodes&quot;" type="relfk" layer="0"
-	 src-table="public.&quot;enzPathNode&quot;"
-	 dst-table="public.edges" reference-fk="mnIdfx"
-	 src-required="false" dst-required="false"/>
-
-<relationship name="&quot;rel_enzPathNode_path&quot;" type="relfk" layer="0"
-	 src-table="public.&quot;enzPathNode&quot;"
-	 dst-table="public.path" reference-fk="mmIdfx_cp"
-	 src-required="false" dst-required="false"/>
-
-<relationship name="&quot;rel_enzPathNode_enzime&quot;" type="relfk" layer="0"
-	 src-table="public.&quot;enzPathNode&quot;"
-	 dst-table="public.enzime" reference-fk="mnIdfx_cp1"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="&quot;rel_subsProd_reaction&quot;" type="relfk" layer="0"
@@ -541,9 +897,9 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	 dst-table="public.&quot;reactionAssociation&quot;" reference-fk="rAssFk2"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="428.855" y="539.772"/>
-	<position x="428.855" y="479.222"/>
-	<position x="341.237" y="479.222"/>
+		<position x="457.851" y="667.083"/>
+	<position x="457.851" y="597"/>
+	<position x="376.567" y="597"/>
 	</line>
 </relationship>
 
@@ -552,9 +908,63 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	 dst-table="public.reaction" reference-fk="edgFk"
 	 src-required="false" dst-required="false"/>
 
-<relationship name="&quot;rel_nodeName_edges&quot;" type="relfk" layer="0"
+<relationship name="rel_nodemetric_nodes" type="relfk" layer="0"
+	 src-table="public.nodemetric"
+	 dst-table="public.nodes" reference-fk="nmfk"
+	 src-required="false" dst-required="false">
+	<label ref-type="name-label">
+		<position x="24.0277" y="59.7961"/>
+	</label>
+</relationship>
+
+<relationship name="rel_nodes_reaction" type="relfk" layer="0"
+	 src-table="public.nodes"
+	 dst-table="public.reaction" reference-fk="nFk"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_nodemetric_path" type="relfk" layer="0"
+	 src-table="public.nodemetric"
+	 dst-table="public.path" reference-fk="nmfk2"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="&quot;rel_nodeByOrgs_nodemetric1&quot;" type="relfk" layer="0"
+	 src-table="public.nodebyorgs"
+	 dst-table="public.nodemetric" reference-fk="nboFk"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="&quot;rel_nodeAlias_nodes&quot;" type="relfk" layer="0"
 	 src-table="public.&quot;nodeAlias&quot;"
-	 dst-table="public.edges" reference-fk="nnmFk"
+	 dst-table="public.nodes" reference-fk="nnmFk"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="&quot;rel_nodeAlias_reaction&quot;" type="relfk" layer="0"
+	 src-table="public.&quot;nodeAlias&quot;"
+	 dst-table="public.reaction" reference-fk="naCh1"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="&quot;rel_nodeAlias_enzime&quot;" type="relfk" layer="0"
+	 src-table="public.&quot;nodeAlias&quot;"
+	 dst-table="public.enzime" reference-fk="naCh2"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_nodebyorgs_organism" type="relfk" layer="0"
+	 src-table="public.nodebyorgs"
+	 dst-table="public.organism" reference-fk="orgPk"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="&quot;rel_mapInfo_path&quot;" type="relfk" layer="0"
+	 src-table="public.&quot;mapInfo&quot;"
+	 dst-table="public.path" reference-fk="fkMappId"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="&quot;rel_mapInfo_enzime&quot;" type="relfk" layer="0"
+	 src-table="public.&quot;mapInfo&quot;"
+	 dst-table="public.enzime" reference-fk="fkMapeId"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="&quot;rel_mapInfo_organism&quot;" type="relfk" layer="0"
+	 src-table="public.&quot;mapInfo&quot;"
+	 dst-table="public.organism" reference-fk="fkMaporgId"
 	 src-required="false" dst-required="false"/>
 
 </dbmodel>
