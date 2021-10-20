@@ -70,6 +70,37 @@ loadDependencies <- function(){
     install.packages("DBI", repos = "http://cran.us.r-project.org")
   library(DBI)
   
+  # tidyr
+  if (!requireNamespace("tidyr", quietly = TRUE))
+    install.packages("tidyr", repos = "http://cran.us.r-project.org")
+  library(tidyr)
+ 
+  # tidyverse
+  if (!requireNamespace("tidyverse", quietly = TRUE))
+    install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+  library(tidyverse) 
+  
+  # ggplot
+  if (!requireNamespace("ggplot2", quietly = TRUE))
+    install.packages("ggplot2", repos = "http://cran.us.r-project.org")
+  library(ggplot2)
+  
+  if (!require("gridExtra")) {
+    install.packages("gridExtra", repos = "http://cran.us.r-project.org")
+  }
+  if (!require("grid")) {
+    install.packages("grid", repos = "http://cran.us.r-project.org")
+  }
+  if (!require("lattice")) {
+    install.packages("lattice", repos = "http://cran.us.r-project.org")
+  }
+  if (!require("cowplot")) {
+    install.packages("cowplot", repos = "http://cran.us.r-project.org")
+  }
+  if (!require("reshape2")) {
+    install.packages("reshape2", repos = "http://cran.us.r-project.org")
+  }
+  
   #BiocManager::install("Rgraphviz")
   #BiocManager::install("RBGL")
   
@@ -79,5 +110,7 @@ loadDependencies <- function(){
   source(file.path(funcDir,"helperFunctions.R"))
   source(file.path(funcDir,"phaseFunctions.R"))
   source(file.path(funcDir,"dbFunctions.R"))
+  source(file.path(funcDir,"plotFunctions.R"))
   
 }
+

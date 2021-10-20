@@ -705,6 +705,11 @@
         <graphics name="1.1.1.405" fgcolor="#000000" bgcolor="#BFBFFF"
              type="rectangle" x="598" y="889" width="46" height="17"/>
     </entry>
+    <entry id="88" name="3.1.1.110" type="enzyme" reaction="rn:R02427"
+        link="http://www.kegg.jp/dbget-bin/www_bget?3.1.1.110">
+        <graphics name="3.1.1.110" fgcolor="#000000" bgcolor="#BFFFBF"
+             type="rectangle" x="205" y="692" width="46" height="17"/>
+    </entry>
     <relation entry1="126" entry2="127" type="ECrel">
         <subtype name="compound" value="166"/>
     </relation>
@@ -1666,5 +1671,9 @@
     <reaction id="233" name="rn:R01525" type="reversible">
         <substrate id="146" name="cpd:C01068"/>
         <product id="155" name="cpd:C00199"/>
+    </reaction>
+    <reaction id="1000" name="rn:R02427" type="reversible">
+        <substrate id="143" name="cpd:C02266"/>
+        <product id="150" name="cpd:C00502"/>
     </reaction>
 </pathway>

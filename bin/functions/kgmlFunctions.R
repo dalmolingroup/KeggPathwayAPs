@@ -433,9 +433,14 @@ KGML2Dataframe <- function(kgml_,
              msg <- paste(msg, "\nDetailed error messages from",
                           "XML::xmlTreeParse:\n", sep = "")
              cat(msg)
-             stop(e)
+             cat(file = logFile, append = T,
+                 "\tError processing", basename(kgml_), "file.\n",msg,'\n')
+             error<<-1
+             return(NULL)
            })
-  
+  if(error != 0){
+    return(0)
+  }  
   # Retrieve the XML root
   root <- xml_root(doc)
   #r1<- read_xml(kgml_)
@@ -546,7 +551,11 @@ KGML2Dataframe <- function(kgml_,
   rm(dataList)
   
   #separate enzimes from maps and compounds
-  enzimes<-entryRef[entryRef$eType == 'enzyme',]
+  if(dataType == 'ec'){
+    enzimes<-entryRef[entryRef$eType == 'enzyme',]
+  }else{
+    enzimes<-entryRef[entryRef$eType == 'gene',]
+  }
   compounds<-entryRef[entryRef$eType == 'compound',]
   compounds$cDesc<-''
   # #remove duplicated pair enzime + reaction
@@ -590,6 +599,7 @@ KGML2Dataframe <- function(kgml_,
     
     
   if(dataType == 'ec'){
+    # EC ----
     #Insert pathway information into database
     pId <- do.call(rbind, insertPathInfo(pathwayinfo))[1]
                    
@@ -645,31 +655,28 @@ KGML2Dataframe <- function(kgml_,
                                   MARGIN = 1,
                                   insertRelation))
     
+  }else{
+    # other orgs ----
+    #process organism information
+    pId <- do.call(rbind, 
+                   getPathInfo(pathwayinfo = pathwayinfo,
+                               orgName = dataType))[1]
     
-    #atualizar a função de inserçaõ de reação em insertEnzReac
-    #insert compound information
+    enzimes$pId<-pId
+    enzimes$org <- dataType
+    compounds$pId<-pId
+    reactionsRef$pId<-pId
+    reactionsRef$org <- dataType
+    reactionsDef$pId<-pId
     
+    apply(X = reactionsRef,
+          MARGIN = 1,
+          insertReactionOrg)
     
-    #ecNodes2Db(nodes, map)
     }
 
-
-  # Create a list with pathway dataFrames info
-  # current_kgml <- list(pathwayinfo = pathwayinfo, 
-  #                      entryRef = entryRef, 
-  #                      entryMap = entryMap,
-  #                      dupEntry = dupEntry,
-  #                      eDupReaction = eDupReaction,
-  #                      edges = edges,
-  #                      reactionsRef = reactionsRef,
-  #                      reactionsDef = reactionsDef,
-  #                      rDupReaction = rDupReaction,
-  #                      nodes = nodes,
-  #                      nodesDuplic = nodesDuplic)
-  # 
-  # # Return the list with pathway dataFrames info
-  # return(current_kgml)
-#  }
+  return(1)
+  
 }
 
 #' Get the KEGG kgml file and convert it into graph

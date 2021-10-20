@@ -1,0 +1,90 @@
+Path00010
+Tissue distribution
+
+    2.7.1.1 Hexokinase 
+        3098(HK1) 3099(HK2) 3101(HK3) 80201(HKDC1)
+        Skeletal muscle (most common example even though it occurs throughout most of the body)
+    2.7.1.2 Glucokinase 
+        2645(GCK)
+        Liver, pancreas beta cells and, less notably, in cells of the intestine and brain
+    2.7.1.147 ADP-dependent glucokinase
+        83440(ADPGK)
+        Appears not to make a quantifiable contribution to glycolysis  DOI: 10.1007/s11010-011-1212-8 
+    2.7.1.63 polyphosphate glucokinase
+        Não hsa (fungos e bactérias)
+        
+Por exemplo:
+
+    2.7.1.1
+        ATP + alpha-D-Glucose <=> ADP + alpha-D-Glucose 6-phosphate (R01786)
+        
+        Principais: alpha-D-Glucose e alpha-D-Glucose 6-phosphate
+        
+    2.7.1.147
+        alpha-D-Glucose + ADP <=> alpha-D-Glucose 6-phosphate + AMP (R09085)
+        
+        Principais: alpha-D-Glucose e alpha-D-Glucose 6-phosphate
+    2.7.1.63
+        Polyphosphate + alpha-D-Glucose <=> Polyphosphate + alpha-D-Glucose 6-phosphate (R02189)
+
+        Principais: alpha-D-Glucose e alpha-D-Glucose 6-phosphate
+        
+Pelo KEGG eu tenho como identificar um nó de 3 maneiras, por ordem de geração de numero de nós similares:
+    1) Uma enzima define um nó.
+        Me parece muito permissivo, gerando muitas rotas alternativas e reduzindo o número de APs. É como vinha sendo feito.
+        
+    2) A reação define o nó. 
+        Serão colapsados apenas as enzimas que funcionam como alternativa para uma mesma reação.
+    
+    3) O conjunto (substrato + produto principais) define um nó.
+        Me parece ser muito restritivo, já que não leva em conta a reação. 
+        Além disso, esta classificação de substrato e produto principais é meio subjetiva para algumas reações, já que o conceito não está presente na estrutura do KEGG. 
+        Na maioria dos casos as variações são reações independentes ou dependentes de ATP, mas isso pode variar muito.
+        A vantagem é que o  número de APs irá, provavelmente, crescer bastante.
+
+    
+    Atualmente eu estou considerando apenas reações exatamente iguais. 
+    
+    No exemplo do trecho da rota 0010 (Glycolysis / Gluconeogenesis):
+    
+    2.7.1.1
+        ATP + alpha-D-Glucose <=> ADP + alpha-D-Glucose 6-phosphate (R01786)
+        
+        Principais: alpha-D-Glucose e alpha-D-Glucose 6-phosphate
+        
+    2.7.1.147
+        alpha-D-Glucose + ADP <=> alpha-D-Glucose 6-phosphate + AMP (R09085)
+        
+        Principais: alpha-D-Glucose e alpha-D-Glucose 6-phosphate
+    2.7.1.63
+        Polyphosphate + alpha-D-Glucose <=> Polyphosphate + alpha-D-Glucose 6-phosphate (R02189)
+
+        Principais: alpha-D-Glucose e alpha-D-Glucose 6-phosphate    
+        
+        
+    5.3.1.9
+        D-glucose 6-phosphate = D-fructose 6-phosphate (R02739)
+        
+    5.1.3.15
+        alpha-D-glucose 6-phosphate = beta-D-glucose 6-phosphate (R02739)
+        
+    Gera os seguintes grafos:
+        
+path 40
+    3.1.1.110 ausente no xml
+    
+    adicionei
+        <entry id="88" name="3.1.1.110" type="enzyme" reaction="rn:R02427"
+            link="http://www.kegg.jp/dbget-bin/www_bget?3.1.1.110">
+            <graphics name="3.1.1.110" fgcolor="#000000" bgcolor="#BFFFBF"
+             type="rectangle" x="205" y="692" width="46" height="17"/>
+        </entry>
+             
+        <reaction id="1000" name="rn:R02427" type="reversible">
+            <substrate id="143" name="cpd:C02266"/>
+            <product id="150" name="cpd:C00502"/>
+        </reaction>
+        
+        Atentar para os ids dos compounds ou a associação não ficará correta
+Path ec00333
+    dados insuficientes
