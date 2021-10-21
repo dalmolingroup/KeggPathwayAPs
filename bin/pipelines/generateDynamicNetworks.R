@@ -1,7 +1,7 @@
 #*******************************************#
 # Pipeline to generate the dynamic networks #
 #*******************************************#
-
+ 
 # ---- IMPORT SECTION ----
 
 # Clean all variables
