@@ -6,7 +6,7 @@
 #   warranty of fitness for a particular purpose. 
 #   It's released under GPL v2.
 #*************************************************
- 
+
 #******************************************#
 # Functions to control the pipeline phases #
 #******************************************#
