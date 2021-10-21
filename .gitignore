@@ -9,7 +9,13 @@ data/database/dictionaryBkp.db
 !data/kgml/sce
 data/kgml/*
 data/database/model.dbm
+<<<<<<< HEAD
 others/*
 output/*
+=======
+figures/*
+log/*
+others/*
+>>>>>>> 0f81c56334cd3589966e623a39efbb3097b2b7d0
 bin/.RData
 bin/.Rhistory
