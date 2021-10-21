@@ -1,9 +1,0 @@
-select r.rName,r.rId, p.pName,s.spType, count(*) as c
-from subsProd as s inner join
-	reaction as r on s.rId = r.rId inner JOIN
-	reacOnPath as rp on r.rId = rp.rId INNER JOIN
-	path as p on p.pId = rp.pId
-where 
-	s.secondary = 0
-GROUP by r.rId, p.pId,s.spType
-HAVING c>=2

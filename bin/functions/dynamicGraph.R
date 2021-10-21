@@ -89,19 +89,23 @@ showDynamicGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', remo
   vis.nodes$totalOrg = totalOrg
   
   # Get the frequency for each pathway
+  idx=1
   for (idx in 1:nrow(vis.nodes)) {
     vis.nodes[idx,]$freq = countNodeFrequency(vis.nodes[idx,]$nId, pId)
     vis.nodes[idx,]$percentage = (vis.nodes[idx,]$freq / totalOrg) * 100
     
     # Get the nodes associated enzymes and reactions
     createDbConnection()
-    associatedEnzymes <- getAssociatedEnzymes(vis.nodes[idx,]$name, paste0("ec", pathway_))
+    associatedEnzymes <- getAssociatedEnzymes(vis.nodes[idx,]$name, pId, org_)
     associatedReactions <- getAssociatedReactions(vis.nodes[idx,]$name, paste0("ec", pathway_))
     
     if (!is.null(associatedEnzymes) && length(associatedEnzymes) != 0) {
       tempEnzymes = ""
+      idx2=1
       for (idx2 in 1:nrow(associatedEnzymes)) {
-        tempEnzymes <- paste0(tempEnzymes, "<br>", associatedEnzymes[idx2,]$enzymeName)
+        tempEnzymes <- paste0(tempEnzymes, "<br>", "<a href = ",
+                              associatedEnzymes[idx2,]$link, " target=_blank>",
+                              associatedEnzymes[idx2,]$enzymeName,'</a>')
       }
       vis.nodes[idx,]$associatedEnzymes <- tempEnzymes
     }

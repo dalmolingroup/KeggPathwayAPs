@@ -1,7 +1,0 @@
-select DISTINCT e1.eName, e2.eName, c1.cName
-from interaction as i INNER JOIN
-	enzime as e1 on e1.eId = i.eId1 INNER JOIN
-	enzime as e2 on e2.eId = i.eId2 INNER JOIN
-	compound as c1 on c1.cId = i.cId inner JOIN
-	enzOnPath as e3 on e3.eId = e1.eId
-where 	pId = 1;

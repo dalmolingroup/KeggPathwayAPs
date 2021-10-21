@@ -9,8 +9,7 @@ data/database/dictionaryBkp.db
 !data/kgml/sce
 data/kgml/*
 data/database/model.dbm
-figures/*
-log/*
-others
+others/*
+output/*
 bin/.RData
 bin/.Rhistory

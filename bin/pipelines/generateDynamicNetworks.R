@@ -32,7 +32,7 @@ library(svglite)
 # Base location ----
 # Did you change it to your base location?
 dirBase<-"Place here the correct name of your work folder"
-dirBase<<-"/media/igorbrandao/IGOR BACKUP SERVER/Arquivos Igor/Faculdades/UFRN/4 - Mestrado/Pesquisas/System biology approaches in the investigation of bottlenecks in KEGG pathways/KeggPathwayAPs"
+dirBase<<-"/home/clovis/Doutorado/Projetos/Igor/gitAPs"
 
 #figures
 dirFig<<-file.path(dirBase,"figures")
@@ -63,7 +63,7 @@ sapply(files.sources, source)
 #*************************#
 
 # Load the pathways by organisms data
-orgList <- c("ec", "hsa", "mmu", "dme", "sce", "cel")
+orgList <- c("ec", "hsa", "mmu", "dme", "sce", "cel","ath")
 #orgList <- getOrgCounts()
 #orgList <- orgList$org
 
@@ -83,12 +83,13 @@ pathwayList <- getAllPathways()
 #***************#
 # Pipeline flow #
 #***************#
-
+#org_ <- "hsa" #debug
 # Loop 01: Run through all available organisms
 lapply(orgList, function(org_) {
   pathway_index <- 1
   
   # Loop 02: Run through all available pathways
+  #pathway_ <- pathwayList[[1]]
   lapply(pathwayList, function(pathway_) {
     createDbConnection()
     

@@ -655,14 +655,8 @@ KGML2Dataframe <- function(kgml_,
                                   MARGIN = 1,
                                   insertRelation))
     
-    entryMap$map<-NULL
-    entryMap$graphicalType<-NULL
-    entryMap$width<-NULL
-    entryMap$height<-NULL
-    entryMap$fgcolor<-NULL
-    entryMap$bgcolor<-NULL
-    entryMap$pId<-pId
-    entryMap$orgId<-dataType
+    #prepare entryMap to insertion
+    #map<-entryMap
     
     #remove ORTHOLOGY links
     entryMap<-entryMap[!entryMap$mLink %in%
@@ -677,6 +671,20 @@ KGML2Dataframe <- function(kgml_,
     entryMap<-entryMap[!entryMap$mLink %in%
                          entryMap$mLink[grep(pattern = 'www_bget[?]ec',
                                              x = entryMap$mLink)],]
+    #remove map links
+    entryMap<-entryMap[entryMap$graphicalType != 'roundrectangle',]
+    
+    
+    entryMap$map<-NULL
+    entryMap$graphicalType<-NULL
+    entryMap$width<-NULL
+    entryMap$height<-NULL
+    entryMap$fgcolor<-NULL
+    entryMap$bgcolor<-NULL
+    entryMap$pId<-pId
+    entryMap$orgId<-dataType
+    tmp<-unique(entryRef[,c('eId','x','y')])
+    entryMap<- merge(entryMap,tmp, by ='eId')
     
     apply(X = entryMap,
           MARGIN = 1,
@@ -704,15 +712,6 @@ KGML2Dataframe <- function(kgml_,
     #prepare entryMap to insertion
     #map<-entryMap
     
-    entryMap$map<-NULL
-    entryMap$graphicalType<-NULL
-    entryMap$width<-NULL
-    entryMap$height<-NULL
-    entryMap$fgcolor<-NULL
-    entryMap$bgcolor<-NULL
-    entryMap$pId<-pId
-    entryMap$orgId<-dataType
-
     #remove ORTHOLOGY links
     entryMap<-entryMap[!entryMap$mLink %in%
                          entryMap$mLink[grep(pattern = 'www_bget[?]K',
@@ -721,11 +720,25 @@ KGML2Dataframe <- function(kgml_,
     entryMap<-entryMap[!entryMap$mLink %in%
                          entryMap$mLink[grep(pattern = 'www_bget[?]C',
                                              x = entryMap$mLink)],]
-
+    
     #remove map links
     entryMap<-entryMap[!entryMap$mLink %in%
                          entryMap$mLink[grep(pattern = 'www_bget[?]ec',
                                              x = entryMap$mLink)],]
+    #remove map links
+    entryMap<-entryMap[entryMap$graphicalType != 'roundrectangle',]
+    
+       
+    entryMap$map<-NULL
+    entryMap$graphicalType<-NULL
+    entryMap$width<-NULL
+    entryMap$height<-NULL
+    entryMap$fgcolor<-NULL
+    entryMap$bgcolor<-NULL
+    entryMap$pId<-pId
+    entryMap$orgId<-dataType
+    tmp<-unique(entryRef[,c('eId','x','y')])
+    entryMap<- merge(entryMap,tmp, by ='eId')
     
     apply(X = entryMap,
           MARGIN = 1,

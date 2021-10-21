@@ -2072,16 +2072,17 @@ getNodeMetrics <- function(nodeIds_, pathwayId_) {
   return(resQuery)
 }
 
-getAssociatedEnzymes <- function(nodeEName_, pName_){
-  sql <- paste0('SELECT n.nId, n.eName, na.childId, e.eName as enzymeName
+getAssociatedEnzymes <- function(nodeEName_, pId, org){
+  sql <- paste0('SELECT n.nId, n.eName, na.childId, e.eName as enzymeName, m.link as link
           FROM nodeAlias as na INNER JOIN
           	enzime as e on e.eId = na.childId INNER JOIN
-          	nodes as n on n.nId = na.nId
-          WHERE na.nId in (SELECT n.nId
+          	nodes as n on n.nId = na.nId INNER JOIN
+			mapInfo as m on m.eId = na.childId AND pId = ',pId ,' AND orgId = \'',org ,'\'',
+          'WHERE na.nId in (SELECT n.nId
           			FROM nodemetric nm INNER JOIN
           				nodes as n on n.nId = nm.nId  INNER JOIN
 						path as p on p.pId = nm.pId
-          			WHERE p.pName = "', pName_, '" and n.ename = "', nodeEName_, '")
+          			WHERE p.pId = "', pId, '" and n.ename = "', nodeEName_, '")
           	and na.type = "e";')
   
   resQuery <- dbGetQuery(dbCon,sql)
@@ -2305,29 +2306,43 @@ insertReactionOrg<-function(reaction){
 
 }
 
-#mapL<-as.vector(map[1,]) #debug
+#mapL<-as.vector(entryMap[2,]) #debug
 insertMap<-function(mapL){
-  eId<-mapL["eId"]
+  eIdOld<-mapL["eId"]
   pId <- mapL["pId"]
   orgId <- mapL["orgId"]
   link<- mapL["mLink"]
+  x<- mapL["x"]
+  y<- mapL["y"]
+  # if(pId == 31){
+  #   browser()
+  # }
   
-  table <- "mapInfo"
-  fields <- c("eId","pId","orgId")
-  values<-c(paste0('"',eId,'"'),
-            paste0('"',pId,'"'),
-            paste0('\'',orgId,'\''))
-  
-  exist <- searchValue(table, fields, values)
-  if(exist == 0 ){ # Not Exists
-    sql <- paste0('INSERT INTO mapInfo
+  sql<-paste0('SELECT eId
+              FROM enzOnPath
+              WHERE x = ',x,' AND y = ',y ,' AND pId = ', pId)  
+  #cat(sql,x,y,'\n')
+  eId <- dbGetQuery(dbCon,sql)
+  if(nrow(eId) >0){
+    if(nrow(eId)>1){
+      eId<-eId[1,1]
+    }
+    table <- "mapInfo"
+    fields <- c("eId","pId","orgId")
+    values<-c(paste0('"',eId,'"'),
+              paste0('"',pId,'"'),
+              paste0('\'',orgId,'\''))
+    
+    exist <- searchValue(table, fields, values)
+    if(exist == 0 ){ # Not Exists
+      sql <- paste0('INSERT INTO mapInfo
                     VALUES (',
-                  pId,',',
-                  eId,',\'',
-                  orgId,'\',\'',
-                  link,'\');')
-    #cat(sql,' ',rName,' ',exist,'\n')
-    resQuery <- dbExecute(dbCon,sql) 
+                    pId,',',
+                    eId,',\'',
+                    orgId,'\',\'',
+                    link,'\');')
+      resQuery <- dbExecute(dbCon,sql) 
+    }
   }
   
 }
