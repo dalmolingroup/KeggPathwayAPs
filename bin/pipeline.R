@@ -100,7 +100,7 @@ createGraphMetrics(skip = T)
 # read xml files from organisms and associate load data with ec networks
 generateDataFromKGML(dirBase = dirBase,
                      dataType = 'orgs',
-                     skip = F)
+                     skip = T)
 
 analiseData(skip = F, sd = 3, bicaudal = T)
 analiseData(skip = F, sd = 3, bicaudal = T, type = 'taxon', value = 'Eukaryotes')

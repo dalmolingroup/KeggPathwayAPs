@@ -157,23 +157,47 @@ showDynamicGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', remo
   vis.nodes$borderWidth[which(vis.nodes$isAP == 0)] <- 2 # Node border width
   vis.nodes$borderWidth[which(vis.nodes$isAP == 1)] <- 4 # AP Node border width
   
+  #default texts:
+  tFrequency ='The frequency with which this gReaction appears in the organisms in KEGG.'
+  tDegree='The number of edges that are incident to this vertex.'
+  tBetweenness='Measures the extent to which this node lies on paths between other nodes'
+  tClustering ='Measures how this node tends to cluster with other nodes.'
+  tCloseness='Shows the reciprocal of all shortest paths between this node and all other nodes.'
+  tHubScore='Measures how many good authorities this node points for.'
+  
+    
+  
   vis.nodes$id     <- vis.nodes$nId # Node ID
-  vis.nodes$label  <- vis.nodes$name # Node label
+  vis.nodes$label  <- sub(pattern = 'ec:',
+                          replacement ='',
+                          x = vis.nodes$name) # Node label
   #vis.nodes$label  <- paste0(vis.nodes$name, "\n(", vis.nodes$AP_classification, ")") # Node label
-  vis.nodes$title  <- paste0("EC: ", vis.nodes$name, "<br>",
+  vis.nodes$title  <- paste0("gReaction: ", sub(pattern = 'ec:',
+                                                replacement ='',
+                                                x = vis.nodes$name), "<br>",
                              #"Entrez: ", vis.nodes$entrez, "<hr>",
                              #"Classification: ", vis.nodes$AP_classification, "<br>",
                              "Is AP: ", ifelse(vis.nodes$isAP==1, 'Yes', 'No') , "<br>",
                              "AP impact: ", vis.nodes$bottleneckImpact, "<br>",
                              "Disconnected components: ", vis.nodes$bottleneckDisconnectedComponents, "<hr>",
                              "Community: ", vis.nodes$community, "<br>",
-                             "Degree: ", vis.nodes$degree, "<br>",
-                             "Betweenness: ", format(round(vis.nodes$betweenness, 4), nsmall = 4), "<br>",
-                             "Clustering coefficient: ", format(round(vis.nodes$clusteringCoef, 4), nsmall = 4), "<br>",
-                             "Closeness coefficient: ", format(round(vis.nodes$closenessCoef, 4), nsmall = 4), "<br>",
+                             paste0("<a href=# class=tooltip-test title='",
+                                    tDegree,"' >Degree</a>: "), 
+                             vis.nodes$degree, "<br>",
+                             paste0("<a href=# class=tooltip-test title='",
+                                    tBetweenness,"' >Betweenness</a>: "), 
+                             format(round(vis.nodes$betweenness, 4), nsmall = 4), "<br>",
+                             paste0("<a href=# class=tooltip-test title='",
+                                    tClustering,"' >Clustering coefficient</a>: "), 
+                             format(round(vis.nodes$clusteringCoef, 4), nsmall = 4), "<br>",
+                             paste0("<a href=# class=tooltip-test title='",
+                                    tCloseness,"' >Closeness coefficient</a>: "), 
+                             format(round(vis.nodes$closenessCoef, 4), nsmall = 4), "<br>",
                              "Authority score: ", vis.nodes$authorityScore, "<br>",
-                             "Hub score: ", vis.nodes$hubScore, "<hr>",
-                             "Frequency: ", format(round(vis.nodes$percentage, 2), nsmall = 2), "% <hr>",
+                             paste0("<a href=# class=tooltip-test title='",
+                                    tHubScore,"' >Hub score</a>: "), 
+                             vis.nodes$hubScore, "<hr>",
+                             paste0("<a href=# class=tooltip-test title='",tFrequency,"' >Frequency</a>: "), format(round(vis.nodes$percentage, 2), nsmall = 2), "% <hr>",
                              "Associated enzymes: ", vis.nodes$associatedEnzymes, "<hr>",
                              "Associated reactions: ", vis.nodes$associatedReactions, "<hr>",
                              "More info: ", vis.nodes$link) # Text on click,
@@ -250,10 +274,11 @@ showDynamicGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', remo
   }
   
   # Line title
-  vis.links$title <- paste0(#"Reaction: ", vis.links$reaction1, "<br>",
-                            #"Status: ", vis.links$reaction1Status, "<br>",
-                            "Node1: ", vis.links$nodeFrom, "<br>",
-                            "Node2: ", vis.links$nodeTo, "<br>") # Text on click
+  # Box with edges are removed (17/02/2021)
+  # vis.links$title <- paste0(#"Reaction: ", vis.links$reaction1, "<br>",
+  #                           #"Status: ", vis.links$reaction1Status, "<br>",
+  #                           "Node1: ", vis.links$nodeFrom, "<br>",
+  #                           "Node2: ", vis.links$nodeTo, "<br>") # Text on click
   
   # Generate the visNetwor object
   visNetworkObj <- visNetwork(nodes = vis.nodes, edges = vis.links,

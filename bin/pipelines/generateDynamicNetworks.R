@@ -83,7 +83,7 @@ pathwayList <- getAllPathways()
 #***************#
 # Pipeline flow #
 #***************#
-#org_ <- "hsa" #debug
+#org_ <- "ec"#debug
 # Loop 01: Run through all available organisms
 lapply(orgList, function(org_) {
   pathway_index <- 1
