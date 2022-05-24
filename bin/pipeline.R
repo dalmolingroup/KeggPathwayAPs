@@ -23,7 +23,7 @@ rm(list=ls(all=TRUE))
 #Did you change it to your base location?
 dirBase<-"Place here the correct name of your work folder"
 
-dirBase<<-"/media/igorbrandao/IGOR BACKUP SERVER/Arquivos Igor/Faculdades/UFRN/4 - Mestrado/Pesquisas/System biology approaches in the investigation of bottlenecks in KEGG pathways/KeggPathwayAPs"
+dirBase<<-"/media/igorabrandao/IGOR BACKUP SERVER/Arquivos Igor/Faculdades/UFRN/4 - Mestrado/Pesquisas/System biology approaches in the investigation of bottlenecks in KEGG pathways/KeggPathwayAPs"
 
 #figures
 dirFig<<-file.path(dirBase,"figures")
