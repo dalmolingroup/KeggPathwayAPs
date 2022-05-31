@@ -35,13 +35,16 @@
 #' Igor Brandão
 #'
 #'
+
+# Fake data for test purpose....
 pathway_="00010"
-org_="hsa"
+org_="ec"
 auxInfo_ = T
 label_ = 'enzyme'
 removeFake_ = T
 customLayout_="sparse_stress"
-showStaticGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', removeFake_ = T, customLayout_="sparse_stress") {
+
+showStaticGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', removeFake_ = T, customLayout_="gem") {
   #----------------------------#
   # [RETRIEVE GRAPH DATA] #
   #----------------------------#
@@ -229,18 +232,18 @@ showStaticGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', remov
   relations$edge_arrows <- "middle" # arrows: 'from', 'to', or 'middle'
   relations$edge_smooth <- TRUE    # should the edges be curved?
   relations$edge_shadow <- FALSE    # edge shadow
-
+  
   # line color
   relations$edge_color <- "gray"
-
+  
   if (sum(is.na(relations$reaction1Status), na.rm = T) > 0) {
     relations[is.na(relations$reaction1Status),]$reaction1Status = 'reversible'
   }
-
+  
   if (sum(relations$reaction1Status == 'reversible', na.rm = T) > 0) {
     relations[relations$reaction1Status == 'reversible',]$edge_color <- "gray"
   }
-
+  
   if (sum(relations$reaction1Status == 'irreversible', na.rm = T) > 0) {
     relations[relations$reaction1Status == 'irreversible',]$edge_color <- "darkred"
   }
@@ -250,8 +253,8 @@ showStaticGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', remov
   #-------------------------#
 
   # Order the vertices by the name
-  vertices$nId <- factor(vertices$nId, levels = vertices$nId[order(vertices$nId)])
-  relations$from <- factor(relations$from, levels = vertices$nId[order(vertices$nId)])
+  #vertices$nId <- factor(vertices$nId, levels = vertices$nId[order(vertices$nId)])
+  #relations$from <- factor(relations$from, levels = vertices$nId[order(vertices$nId)])
 
   # Reorder the vertice dataframe to make sure the graph_from_data_frame will use name instead of nId
   vertices <-vertices %>% relocate(name, .before = nId)
@@ -268,15 +271,18 @@ showStaticGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', remov
   
   # Validate the used layout since the sparse stress require additional parameters
   if (customLayout_ == "sparse_stress") {
-    staticGraph <- ggraph(iGraph, layout = customLayout_, pivots = nrow(vertices), weights = NA)
+    layout <- create_layout(iGraph, layout = customLayout_, pivots = nrow(vertices), weights = NA)
+  } else if (customLayout_ == "centrality") {
+    layout <- create_layout(iGraph, layout = customLayout_, centrality = betweenness)
   } else {
-    staticGraph <- ggraph(iGraph, layout = customLayout_)
+    layout <- create_layout(iGraph, layout = customLayout_)
   }
   
+  staticGraph <- ggraph(layout)
   staticGraph <- staticGraph +
     # Edges
     geom_edge_fan(aes(colour = edge_color),
-                  strength=1,
+                  strength=2,
                   edge_alpha = 0.5,
                   angle_calc = 'along',
                   label_dodge = unit(2.5, 'mm'),

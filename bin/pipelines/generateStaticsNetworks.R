@@ -85,6 +85,10 @@ pathwayList <- getAllPathways()
 # Pipeline flow #
 #***************#
 
+# The pipeline itself is not working
+# Please go into staticGraph.R and run
+# the commands manually
+
 # Loop 01: Run through all available organisms
 lapply(orgList, function(org_) {
   pathway_index <- 1
