@@ -224,7 +224,7 @@ showDynamicGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', remo
     vis.links[vis.links$reaction1Status == 'irreversible',]$edge_color <- "darkred"
   }
   
-  # Conver the edge nodes Id to name
+  # Convert the edge nodes Id to name
   vis.links$nodeFrom = ''
   vis.links$nodeTo = ''
   

@@ -33,6 +33,7 @@ library(svglite)
 # Did you change it to your base location?
 dirBase<-"Place here the correct name of your work folder"
 dirBase<<-"/media/igorabrandao/IGOR BACKUP SERVER/Arquivos Igor/Faculdades/UFRN/4 - Mestrado/Pesquisas/System biology approaches in the investigation of bottlenecks in KEGG pathways/KeggPathwayAPs"
+setwd(dirBase)
 
 #figures
 dirFig<<-file.path(dirBase,"figures")
@@ -51,7 +52,7 @@ loadDependencies()
 
 # Import the graphLoader functions
 files.sources = NULL
-files.sources[1] = paste0(funcDir, "/", "dynamicGraph.R")
+files.sources[1] = paste0(funcDir, "/", "staticGraph.R")
 sapply(files.sources, source)
 
 #*******************************************************************************************#
@@ -73,7 +74,7 @@ createDbConnection()
 # Load the paythway list
 pathwayList <- getAllPathways()
 
-# Reduce the pathway list for testint purpose
+# Reduce the pathway list for test purpose
 #pathwayList = pathwayList[1:5]
 
 #*******************************************************************************************#

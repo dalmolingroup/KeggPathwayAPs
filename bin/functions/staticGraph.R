@@ -34,34 +34,137 @@
 #' @author
 #' Igor Brandão
 #'
-generateStaticNetwork <- function(network_, networkProperties_, pathway_="", org_="", customLayout_="sparse_stress") {
-
+#'
+pathway_="00010"
+org_="hsa"
+auxInfo_ = T
+label_ = 'enzyme'
+removeFake_ = T
+customLayout_="sparse_stress"
+showStaticGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', removeFake_ = T, customLayout_="sparse_stress") {
+  #----------------------------#
+  # [RETRIEVE GRAPH DATA] #
+  #----------------------------#
+  if (!label_ %in% c('enzyme','reaction','id')) {
+    stop('Label must be "enzyme", "reaction" or "id".')
+  }
+  
+  # Retrieve the pathway ID (check here, just work with ec)
+  pId = getPathId(paste0("ec", pathway_))
+  
+  # Retrieve the graph (check here, just work with ec)
+  if (org_ == "ec") {
+    lGraph <- getGraphFromPath(pathway = paste0("ec", pathway_))
+  } else {
+    lGraph <- getGraphFromPath(pathway = paste0("ec", pathway_), org = org_)
+  }
+  
+  if (is.null(lGraph)) {
+    return(NULL)
+  }
+  
+  g1<-lGraph[[1]]
+  g4 <-lGraph[[2]]
+  
+  if (label_ == 'enzyme') {
+    edge_attr(g1,'label')<-edge_attr(g1,"eName")
+    vertex_attr(g4,'name')<-vertex_attr(g4,"eName")
+  } else if(label_ == 'reaction') {
+    edge_attr(g1,'label')<-edge_attr(g1,"rName")
+    vertex_attr(g4,'name')<-vertex_attr(g4,"rName")
+  }
+  
+  # Retrieve the network metrics
+  networkProperties <- getNodeMetrics(V(g4)$nId, pId)
+  
+  # Get the iGraph object
+  iGraph <- g4
+  
   #----------------------------#
   # [ORGANIZZE THE GRAPH DATA] #
   #----------------------------#
-  vertices <- networkProperties_
-  relations <- network_
-
+  vertices <- networkProperties
+  relations <- as.data.frame(get.edgelist(iGraph))
+  
   #--------------------------#
   # [PREPARE THE GRAPH DATA] #
   #--------------------------#
 
-  # Remove unnecessary data
-  vertices$X <- NULL
-  vertices$x <- NULL
-  vertices$y <- NULL
-
   # Adjust the columns names
-  names(relations)[names(relations) == "node1"] <- "from"
-  names(relations)[names(relations) == "node2"] <- "to"
+  names(relations)[names(relations) == "V1"] <- "from"
+  names(relations)[names(relations) == "V2"] <- "to"
 
-  # Change the relation from -> to names
-  relations$from <- relations$entryID1
-  relations$to <- relations$entryID2
+  # Calculates the nodes frequency
+  vertices$freq = 0;
+  vertices$totalOrg = 0
+  vertices$percentage = 0;
+  vertices$nPercent = 0;
+  vertices$associatedEnzymes = "";
+  vertices$associatedReactions = "";
+  
+  # Get the total orgs for the current pathway
+  totalOrg <- getTotalOrgs(pId)
+  vertices$totalOrg = totalOrg
+  
+  # Get the frequency for each pathway
+  for (idx in 1:nrow(vertices)) {
+    vertices[idx,]$freq = countNodeFrequency(vertices[idx,]$nId, pId)
+    vertices[idx,]$percentage = (vertices[idx,]$freq / totalOrg) * 100
+    
+    # Get the nodes associated enzymes and reactions
+    createDbConnection()
+    associatedEnzymes <- getAssociatedEnzymes(vertices[idx,]$name, paste0("ec", pathway_))
+    associatedReactions <- getAssociatedReactions(vertices[idx,]$name, paste0("ec", pathway_))
+    
+    if (!is.null(associatedEnzymes) && length(associatedEnzymes) != 0) {
+      tempEnzymes = ""
+      for (idx2 in 1:nrow(associatedEnzymes)) {
+        tempEnzymes <- paste0(tempEnzymes, "<br>", associatedEnzymes[idx2,]$enzymeName)
+      }
+      vertices[idx,]$associatedEnzymes <- tempEnzymes
+    }
+    
+    if (!is.null(associatedReactions) && length(associatedReactions) != 0) {
+      tempReactions = ""
+      for (idx2 in 1:nrow(associatedReactions)) {
+        tempReactions <- paste0(tempReactions, "<br>", associatedReactions[idx2,]$rName)
+      }
+      vertices[idx,]$associatedReactions <- tempReactions
+    }
+  }
+  
+  #**************************************************************************##
+  # Apply a normalization:                                                    #
+  # 100% of occurrence in a pathway can be compared with 50% of other pathway #
+  #**************************************************************************##
+  
+  # Max frequency in a pathway
+  pathwayMaxFrequency <- max(vertices$percentage)
+  
+  # Min frequency in a pathway
+  pathwayMinFrequency <- min(vertices$percentage)
+  
+  # Normalized frequency for each protein
+  vertices$nPercent = (vertices$percentage - pathwayMinFrequency) /
+    (pathwayMaxFrequency - pathwayMinFrequency) * 100
+  
+  #**************************************************************************##
 
   #---------------------#
   # [VERTEX AESTHETICS] #
   #---------------------#
+  
+  # Get the nodes name
+  vertices$name = ''
+  
+  for (idx in 1:nrow(vertices)) {
+    for (idx2 in 1:length(V(g4))) {
+      if (vertices[idx,]$nId == V(g4)[idx2]$nId) {
+        vertices[idx,]$name = V(g4)[idx2]$name
+        break
+      }
+    }
+  }
 
   # Set the node label
   vertices$label <- vertices$name
@@ -69,16 +172,19 @@ generateStaticNetwork <- function(network_, networkProperties_, pathway_="", org
   # Set the initial nodes aesthetic attributes
   vertices$color.border <- "white"
   vertices$borderWidth <- 0
+  vertices$AP_classification <- ""
 
   # Apply the border color by bottleneck status
-  if (sum(vertices$is_bottleneck == 0, na.rm = T) > 0) {
-    vertices$color.border[which(vertices$is_bottleneck == 0)] <- "#ffffff"
-    vertices$borderWidth[which(vertices$is_bottleneck == 0)] <- 1 # Node border width
+  if (sum(vertices$isAP == 0, na.rm = T) > 0) {
+    vertices$color.border[which(vertices$isAP == 0)] <- "#ffffff"
+    vertices$borderWidth[which(vertices$isAP == 0)] <- 1 # Node border width
+    vertices$AP_classification[which(vertices$isAP == 0)] <- "Non-AP"
   }
 
-  if (sum(vertices$is_bottleneck == 1, na.rm = T) > 0) {
-    vertices$color.border[which(vertices$is_bottleneck == 1)] <- "#005b96"
-    vertices$borderWidth[which(vertices$is_bottleneck == 1)] <- 2 # AP Node border width
+  if (sum(vertices$isAP == 1, na.rm = T) > 0) {
+    vertices$color.border[which(vertices$isAP == 1)] <- "#005b96"
+    vertices$borderWidth[which(vertices$isAP == 1)] <- 2 # AP Node border width
+    vertices$AP_classification[which(vertices$isAP == 1)] <- "AP"
   }
 
   # Vertex drop shadow
@@ -87,7 +193,7 @@ generateStaticNetwork <- function(network_, networkProperties_, pathway_="", org
   #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   # ********************************************** #
-  # Vertex aesthetics binded to scalar attributes
+  # Vertex aesthetics bound to scalar attributes
   # ********************************************** #
 
   # Vertex background color scale according to the betweenness
@@ -125,7 +231,7 @@ generateStaticNetwork <- function(network_, networkProperties_, pathway_="", org
   relations$edge_shadow <- FALSE    # edge shadow
 
   # line color
-  relations$edge_color <- NA
+  relations$edge_color <- "gray"
 
   if (sum(is.na(relations$reaction1Status), na.rm = T) > 0) {
     relations[is.na(relations$reaction1Status),]$reaction1Status = 'reversible'
@@ -143,10 +249,13 @@ generateStaticNetwork <- function(network_, networkProperties_, pathway_="", org
   # [SET THE FACTORS ORDER] #
   #-------------------------#
 
-  # Order the vertices by the entryID
-  vertices$entryID <- factor(vertices$entryID, levels = vertices$entryID[order(vertices$entryID)])
-  relations$from <- factor(relations$from, levels = vertices$entryID[order(vertices$entryID)])
+  # Order the vertices by the name
+  vertices$nId <- factor(vertices$nId, levels = vertices$nId[order(vertices$nId)])
+  relations$from <- factor(relations$from, levels = vertices$nId[order(vertices$nId)])
 
+  # Reorder the vertice dataframe to make sure the graph_from_data_frame will use name instead of nId
+  vertices <-vertices %>% relocate(name, .before = nId)
+  
   #-----------------------------#
   # [GENERATE THE GRAPH OBJECT] #
   #-----------------------------#
@@ -155,21 +264,25 @@ generateStaticNetwork <- function(network_, networkProperties_, pathway_="", org
   #------------------#
   # [PLOT THE GRAPH] #
   #------------------#
+  options(ggrepel.max.overlaps = Inf)
+  
   # Validate the used layout since the sparse stress require additional parameters
   if (customLayout_ == "sparse_stress") {
     staticGraph <- ggraph(iGraph, layout = customLayout_, pivots = nrow(vertices), weights = NA)
   } else {
     staticGraph <- ggraph(iGraph, layout = customLayout_)
   }
-
+  
   staticGraph <- staticGraph +
     # Edges
-    geom_edge_fan(aes(colour = reaction1Status),
+    geom_edge_fan(aes(colour = edge_color),
+                  strength=1,
                   edge_alpha = 0.5,
                   angle_calc = 'along',
                   label_dodge = unit(2.5, 'mm'),
                   arrow = arrow(length = unit(2, 'mm'), type = 'closed'),
-                  end_cap = circle(3, 'mm')) +
+                  end_cap = circle(3, 'mm'),
+                  show.legend = NA) +
 
     # Nodes
     geom_node_point(aes(fill = betweenness, size = vertex_size, stroke = borderWidth, colour = AP_classification),
@@ -180,15 +293,15 @@ generateStaticNetwork <- function(network_, networkProperties_, pathway_="", org
                    size = 3, family="serif", repel = TRUE, check_overlap = TRUE,
                    nudge_y = -0.19) +
 
-    # Nodes customizations
+    # Nodes customization
     scale_fill_gradientn("Betweenness", colours = brewer.pal(9, "YlOrBr"), limits=c(min(vertices$betweenness), max(vertices$betweenness))) +
     scale_color_manual("AP classification", values = c('blue', 'black')) +
 
-    # Edges customizations
-    scale_edge_color_manual("Reaction status", values = c('#ff7b7b', 'grey66')) +
+    # Edges customization
+    scale_edge_color_manual("", values = c('grey66', 'grey66')) +
     scale_edge_width_continuous(range = c(0.2,3)) +
 
-    # Theming
+    # Theme
     theme_graph() +
     theme(legend.position = "right") +
 
