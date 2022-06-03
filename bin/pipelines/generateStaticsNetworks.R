@@ -34,6 +34,7 @@ library(svglite)
 dirBase<-"Place here the correct name of your work folder"
 dirBase<<-"/media/igorabrandao/IGOR BACKUP SERVER/Arquivos Igor/Faculdades/UFRN/4 - Mestrado/Pesquisas/System biology approaches in the investigation of bottlenecks in KEGG pathways/KeggPathwayAPs"
 setwd(dirBase)
+getwd()
 
 #figures
 dirFig<<-file.path(dirBase,"figures")
@@ -75,7 +76,7 @@ createDbConnection()
 pathwayList <- getAllPathways()
 
 # Reduce the pathway list for test purpose
-#pathwayList = pathwayList[1:5]
+pathwayList = pathwayList[1:5]
 
 #*******************************************************************************************#
 
@@ -104,14 +105,14 @@ lapply(orgList, function(org_) {
     printMessage(paste0("GENERATING ORG ", org_, ", PATHWAY ", pathway_, " INTERATIVE NETWORK [", pathway_index, " OF ", length(pathwayList), "]"))
     
     # Just execute if the network don't exist
-    if (!file.exists(file.path(paste0(dirBase, '/output/network/', org_, '/', pathway_, '.html')))) {
-      # Generate the dynamic network
-      generatedNetwork <- showDynamicGraph(pathway_ = pathway_, org_ = org_, 
+    if (!file.exists(file.path(paste0(dirBase, '/output/network/static/', org_, '/', pathway_, '.png')))) {
+      # Generate the static network
+      generatedNetwork <- showStaticGraph(pathway_ = pathway_, org_ = org_, 
                                            auxInfo_ = T, label_ = "enzyme", 
-                                           removeFake_ = T)
+                                           removeFake_ = T, customLayout_="gem")
       
       if (!is.null(generatedNetwork)) {
-        exportNetwork(generatedNetwork, pathway_, org_)
+        exportNetwork(org_, pathway_)
       } else {
         printMessage(paste0("Organism doesn't have this pathway, skipping it..."))
       }

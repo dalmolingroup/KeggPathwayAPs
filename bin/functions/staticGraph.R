@@ -37,13 +37,6 @@
 #'
 
 # Fake data for test purpose....
-pathway_="00010"
-org_="ec"
-auxInfo_ = T
-label_ = 'enzyme'
-removeFake_ = T
-customLayout_="sparse_stress"
-
 showStaticGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', removeFake_ = T, customLayout_="gem") {
   #----------------------------#
   # [RETRIEVE GRAPH DATA] #
@@ -288,6 +281,7 @@ showStaticGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', remov
                   label_dodge = unit(2.5, 'mm'),
                   arrow = arrow(length = unit(2, 'mm'), type = 'closed'),
                   end_cap = circle(3, 'mm'),
+                  check_overlap = TRUE,
                   show.legend = NA) +
 
     # Nodes
@@ -321,7 +315,7 @@ showStaticGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', remov
   staticGraph
 }
 
-exportNetwork <- function(filename) {
+exportNetwork <- function(org_, pathway_) {
   #---------------------------#
   # [EXPORT THE GRAPH FIGURE] #
   #---------------------------#
@@ -332,10 +326,14 @@ exportNetwork <- function(filename) {
     dir.create(file.path(paste0('./output/network/static')), showWarnings = FALSE, mode = "0775")
   }
   
-  if (dir.exists(file.path(paste0('./output/network/static')))) {
-    ggsave(paste0('./output/network/static/', filename, '.png'), width = 35, height = 20, units = "cm")
+  if (!dir.exists(file.path(paste0('./output/network/static/', pathway_)))) {
+    dir.create(file.path(paste0('./output/network/static/', pathway_)), showWarnings = FALSE, mode = "0775")
+  }
+  
+  if (dir.exists(file.path(paste0('./output/network/static/', pathway_)))) {
+    ggsave(paste0('./output/network/static/', pathway_, '/', filename, '.png'), width = 35, height = 20, units = "cm")
     
-    # Export the svg
+    # Export the SVG file
     if (!dir.exists(file.path(paste0('./output/network/static/svg')))) {
       dir.create(file.path(paste0('./output/network/static/svg')), showWarnings = FALSE, mode = "0775")
     }
