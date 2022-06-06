@@ -87,56 +87,62 @@ pathwayList <- getAllPathways()
 # Loop 01: Run through all available organisms
 # lapply(orgList, function(org_) {
 #define the lenght of edges. can be 'long' 'medium' 'short' 
-edgeLength = 'long' 
+edgeLength = 'short' 
 
-  pathway_index <- 1
-  
-  # Loop 02: Run through all available pathways
-  #pathway_ <- pathwayList[[121]]
-  lapply(pathwayList, function(pathway_) {
-    createDbConnection()
-    
-    # Adjust the pathway code
-    pathway_ = str_replace(pathway_, 'ec', '')
-    
-    # Status message
-    # printMessage(paste0("GENERATING ORG ", org_, ", PATHWAY ", pathway_, " INTERATIVE NETWORK [", pathway_index, " OF ", length(pathwayList), "]"))
-    printMessage(paste0("GENERATING PATHWAY ", pathway_, " INTERATIVE NETWORK [", pathway_index, " OF ", length(pathwayList), "]"))
-    
-      # Generate the dynamic network
-      
-      gEC <- getGraph(pathway_ = pathway_,
-                     org_ = 'ec')
-      gBase <- getDynamicGraph(pathway_ = pathway_,
-                               org_ = 'ec',
-                               gEC,
-                               edgeLength = edgeLength)
-      
-      exportNetwork(gBase, pathway_, 'ec')
+pathway_index <- 1
 
-      idx = 1
-      for (idx in 1:length(orgList)) {
-        tmp <- getGraph(pathway_ = pathway_,
-                 org_ = orgList[idx])
-        if (!is.null(tmp)) {
-          tmp <- getDynamicGraph(pathway_ = pathway_,
-                                    org_ = orgList[idx],
-                                    tmp,
-                                    edgeLength = edgeLength)
-          tmp <- hideNodes(base = gBase , 
-                  graph = tmp,
-                  orgList[idx])
-          exportNetwork(tmp, pathway_, orgList[idx])
-        } else {
-          printMessage(paste0("Organism doesn't have this pathway, skipping it..."))
-        }
-      }
-      
-    # Increment the index
-    pathway_index <<- pathway_index + 1
-    
-  }) # End of Loop 02
-  
-# }) # End of Loop 01
+# Just path 00010
+pathway_ <- pathwayList[[1]]
+createDbConnection()
+
+# Adjust the pathway code
+pathway_ = str_replace(pathway_, 'ec', '')
+
+# Status message
+# printMessage(paste0("GENERATING ORG ", org_, ", PATHWAY ", pathway_, " INTERATIVE NETWORK [", pathway_index, " OF ", length(pathwayList), "]"))
+printMessage(paste0("GENERATING PATHWAY ", pathway_, " INTERATIVE NETWORK [", pathway_index, " OF ", length(pathwayList), "]"))
+
+# Generate the dynamic network
+
+#nodes to delete
+delNodes <- c('1.1.1.1+','1.1.5.5','1.2.1.3','1.2.1.5+','1.2.4.1','1.8.1.4','2.3.1.12','2.7.1.1+','2.7.1.1+_1','2.7.1.199','3.1.3.9','3.1.3.10','3.2.1.86','3.2.1.86_1','4.1.1.1','5.1.3.3','5.1.3.15+','5.3.1.9','5.3.1.9_1','5.4.2.2+','6.2.1.1','6.2.1.13')
+gEC <- getGraph(pathway_ = pathway_,
+                org_ = 'ec')
+gBase <- getDynamicGraph(pathway_ = pathway_,
+                         org_ = 'ec',
+                         gEC,
+                         edgeLength = edgeLength)
+
+delNodesId<-gBase$x$nodes$nId[gBase$x$nodes$label %in% delNodes]
+gBase$x$nodes<-gBase$x$nodes[!gBase$x$nodes$nId %in% delNodesId,]
+gBase$x$edges<-gBase$x$edges[!gBase$x$edges$from %in% delNodesId,]
+gBase$x$edges<-gBase$x$edges[!gBase$x$edges$to %in% delNodesId,]
+
+exportNetwork(gBase, pathway_, 'ecShort')
+
+idx = 1
+for (idx in 1:length(orgList)) {
+  tmp <- getGraph(pathway_ = pathway_,
+                  org_ = orgList[idx])
+  if (!is.null(tmp)) {
+    tmp <- getDynamicGraph(pathway_ = pathway_,
+                           org_ = orgList[idx],
+                           tmp,
+                           edgeLength = edgeLength)
+    tmp$x$nodes<-tmp$x$nodes[!tmp$x$nodes$nId %in% delNodesId,]
+    tmp$x$edges<-tmp$x$edges[!tmp$x$edges$from %in% delNodesId,]
+    tmp$x$edges<-tmp$x$edges[!tmp$x$edges$to %in% delNodesId,]
+    tmp <- hideNodes(base = gBase , 
+                     graph = tmp,
+                     orgList[idx])
+    exportNetwork(tmp, pathway_, paste0(orgList[idx],'Short'))
+  } else {
+    printMessage(paste0("Organism doesn't have this pathway, skipping it..."))
+  }
+}
+
+# Increment the index
+pathway_index <<- pathway_index + 1
+
 
 # End ----

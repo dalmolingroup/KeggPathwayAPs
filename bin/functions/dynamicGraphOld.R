@@ -17,9 +17,15 @@
 # Dynamic graph section #
 #*******************************************************#
 
-getGraph<-function(pathway_, 
-                   org_) {
-
+showDynamicGraph<-function(pathway_, org_, auxInfo_ = T, label_ = 'enzyme', removeFake_ = T, dynamicNetwork_ = T) {
+  if (!label_ %in% c('enzyme','reaction','id')) {
+    stop('Label must be "enzyme", "reaction" or "id".')
+  }
+  
+  # Color pallet
+  pal <- brewer.pal(9, "YlOrRd")
+  pal2 <- brewer.pal(8, "Dark2")
+  
   # Retrieve the pathway ID (check here, just work with ec)
   pId = getPathId(paste0("ec", pathway_))
   
@@ -36,43 +42,10 @@ getGraph<-function(pathway_,
   
   g1<-lGraph[[1]]
   g4 <-lGraph[[2]]
-  return(g4)
-}
-
-getDynamicGraph<-function(g4, 
-                          pathway_, 
-                          org_,
-                          auxInfo_ = T, 
-                          label_ = 'enzyme', 
-                          removeFake_ = T, 
-                          dynamicNetwork_ = T,
-                          edgeLength = 'long'){
- 
-    # Retrieve the pathway ID (check here, just work with ec)
-    pId = getPathId(paste0("ec", pathway_))
-    if (!label_ %in% c('enzyme','reaction','id')) {
-      stop('Label must be "enzyme", "reaction" or "id".')
-    }
-  if(!edgeLength%in% c('long','medium','short')){
-    print('edgeLength must be "long", "medium" or "short". Using "long".')
-    edgeLength = 'long'
-  }
-  if(edgeLength == 'long'){
-    edgeLength = -75
-  }else  if(edgeLength == 'medium'){
-    edgeLength = -35
-  } else if(edgeLength == 'short'){
-    edgeLength = -15
-  }
-  # Color pallet
-  pal <- brewer.pal(9, "YlOrRd")
-  pal2 <- brewer.pal(8, "Dark2")
-  
   
   # Retrieve the network metrics
-  # networkProperties <- getNodeMetrics(V(g4)$nId, pId)
-  networkProperties <- getProperties(g4, pId)
-  names(networkProperties)[names(networkProperties) == 'node'] <- 'nId'
+  networkProperties <- getNodeMetrics(V(g4)$nId, pId)
+  
   # Get the iGraph object
   iGraph <- g4
   
@@ -80,10 +53,10 @@ getDynamicGraph<-function(g4,
   data <- toVisNetworkData(iGraph)
   
   if (label_ == 'enzyme') {
-    # edge_attr(g1,'label')<-edge_attr(g1,"eName")
+    edge_attr(g1,'label')<-edge_attr(g1,"eName")
     vertex_attr(g4,'name')<-vertex_attr(g4,"eName")
   } else if(label_ == 'reaction') {
-    # edge_attr(g1,'label')<-edge_attr(g1,"rName")
+    edge_attr(g1,'label')<-edge_attr(g1,"rName")
     vertex_attr(g4,'name')<-vertex_attr(g4,"rName")
   }
   
@@ -318,7 +291,7 @@ getDynamicGraph<-function(g4,
   if (dynamicNetwork_) {
     # Add custom physics
     visNetworkObj <- visPhysics(visNetworkObj, stabilization = TRUE, solver = 'forceAtlas2Based',
-                                forceAtlas2Based = list(gravitationalConstant = edgeLength, avoidOverlap = 0.3))
+                                forceAtlas2Based = list(gravitationalConstant = -75, avoidOverlap = 0.3))
     
     # Add custom options
     visNetworkObj <- visOptions(visNetworkObj, autoResize = TRUE, manipulation = TRUE, selectedBy = 'isAP',
@@ -330,13 +303,8 @@ getDynamicGraph<-function(g4,
   } else {
     # Static network
     visNetworkObj <- visPhysics(visNetworkObj, stabilization = TRUE, solver = 'forceAtlas2Based',
-                                forceAtlas2Based = list(gravitationalConstant = edgeLength, avoidOverlap = 0.3))
+                                forceAtlas2Based = list(gravitationalConstant = -75, avoidOverlap = 0.3))
   }
-  #static positions
-  visNetworkObj <- visLayout(visNetworkObj, randomSeed = 0)
-  #just order nodes by nId
-  visNetworkObj$x$nodes$nId <- as.numeric(visNetworkObj$x$nodes$nId)
-  visNetworkObj$x$nodes <- visNetworkObj$x$nodes[order(visNetworkObj$x$nodes$nId),]
 
   # Generate the network
   return(visNetworkObj)
@@ -403,70 +371,6 @@ fillPathwayCodeWithZeros <- function(dataSet_, verbose_ = TRUE) {
   return(dataSet_)
 }
 
-getProperties <- function(g, pId){
-  gProp<-getGraphProperties(g)
-  gProp$isAP<-0
-  APs<-as.character(getGraphBottleneck(g))
-  if(any(!APs %in% gProp$node)){
-    stop('At least one AP is missing in ',pathway)
-  }
-  gProp$pid<-pId
-  gProp$isAP[gProp$node %in% APs] <- 1
-  
-  #for cases where no metric is avaliable
-  gProp[is.na(gProp)]<- -1
-  
-  return(gProp)
-
-}
-
-hideNodes <- function(base,
-                      graph,
-                      org){
-  nada <- alpha(colour = 'white', alpha = 0)
-  copy <- base
-  idx = 1
-  for(idx in 1:nrow(graph$x$nodes)){
-    copy$x$nodes[copy$x$nodes$nId == graph$x$nodes$nId[idx],
-         c(2:34)] <- graph$x$nodes[idx,c(2:34)]
-  }
-  
-  nodes <- base$x$nodes$nId[!base$x$nodes$nId %in% 
-                              graph$x$nodes$nId]
-  copy$x$nodes$color.border[base$x$nodes$nId %in% 
-                              nodes] <- nada
-  copy$x$nodes$color.highlight.background[base$x$nodes$nId %in% 
-                                            nodes] <- nada
-  copy$x$nodes$color.highlight.border[base$x$nodes$nId %in% 
-                                        nodes] <- nada
-  copy$x$nodes$color.background[base$x$nodes$nId %in% 
-                                  nodes] <- nada
-  copy$x$nodes$size[base$x$nodes$nId %in% 
-                                  nodes] <- 0
-  copy$x$nodes$size[base$x$nodes$nId %in% 
-                      nodes] <- 0
-  copy$x$nodes$label[base$x$nodes$nId %in% 
-                      nodes] <- ''
-  copy$x$edges$color[base$x$edges$from %in% 
-                       nodes] <- nada
-  copy$x$edges$color[base$x$edges$to %in% 
-                       nodes] <- nada
-  copy$x$main$text<- sub(x=copy$x$main$text,
-                         pattern = "ec", 
-                         replacement = org)
-  edges <- nrow(copy$x$edges[copy$x$edges$color!= nada,])
-  nodes <- nrow(copy$x$nodes[copy$x$nodes$color.background!= nada,])
-  edgesOld <- nrow(base$x$edges)
-  nodesOld <- nrow(base$x$nodes)
-  
-  copy$x$submain$text<- sub(x=copy$x$submain$text,
-                            pattern = nodesOld, 
-                            replacement = nodes)
-  copy$x$submain$text<- sub(x=copy$x$submain$text,
-                            pattern = edgesOld,
-                            replacement = edges)
-  return(copy)
-}
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 # End ----
